@@ -21,8 +21,7 @@
 }
 
 .brand { display: flex; align-items: center; align-self: flex-start; gap: 10px; width: fit-content; max-width: 100%; height: 40px; padding: 0 8px; color: var(--color-text); text-decoration: none; }
-.brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid rgb(190 174 255 / 36%); border-radius: 10px; background: linear-gradient(145deg, #a693f7, #6655b9 62%, #39315e); box-shadow: 0 0 18px rgb(141 120 239 / 24%), inset 0 1px 0 rgb(255 255 255 / 30%); transform: rotate(-4deg); }
-.brand-mark span { width: 10px; height: 10px; border: 1.5px solid white; border-radius: 3.5px; transform: rotate(4deg); }
+.brand-mark { display: block; flex: 0 0 36px; width: 36px; height: 36px; object-fit: contain; }
 .brand-name { white-space: nowrap; font-size: 16px; line-height: 1; font-weight: 650; letter-spacing: -.45px; }
 .brand-name span { margin-left: 3px; color: #a997f5; font-weight: 500; }
 .brand-version { margin-left: 0; padding: 3px 5px; border: 1px solid var(--color-border); border-radius: 5px; color: var(--color-text-dim); font-size: 8px; font-weight: 700; letter-spacing: .08em; }

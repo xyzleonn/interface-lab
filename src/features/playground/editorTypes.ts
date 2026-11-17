@@ -1,13 +1,21 @@
 import type { ButtonVariant } from '../../components/ui/PlaygroundControls'
 
 export type EditorComponentKind = 'button' | 'card' | 'input' | 'toggle' | 'slider'
-export type ComponentKind = EditorComponentKind | 'badge' | 'select' | 'modal' | 'tooltip' | 'tabs'
+export type ComponentKind = EditorComponentKind | 'badge' | 'alert' | 'select' | 'modal' | 'tooltip' | 'tabs'
 
 export type BadgeSettings = {
   text: string
-  variant: 'neutral' | 'accent' | 'success' | 'warning' | 'error'
-  size: 'small' | 'medium'
+  variant: 'default' | 'subtle' | 'outlined'
+  color: 'neutral' | 'primary' | 'success' | 'warning' | 'error'
+  size: 'small' | 'medium' | 'large'
   showDot: boolean
+}
+
+export type AlertSettings = {
+  variant: 'info' | 'success' | 'warning' | 'error'
+  title: string
+  description: string
+  dismissible: boolean
 }
 
 export type SelectSettings = {
@@ -33,6 +41,7 @@ export type TooltipSettings = {
 
 export type TabsSettings = {
   labels: string[]
+  contents: string[]
   activeIndex: number
 }
 
@@ -43,6 +52,7 @@ export type EditorSettings = {
   toggle: { size: number; accent: string; defaultOn: boolean }
   slider: { min: number; max: number; value: number; accent: string }
   badge: BadgeSettings
+  alert: AlertSettings
   select: SelectSettings
   modal: ModalSettings
   tooltip: TooltipSettings

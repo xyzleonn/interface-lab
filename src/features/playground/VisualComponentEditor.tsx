@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { DemoButton, Toggle } from '../../components/ui/PlaygroundControls'
 import { ColorPickerField } from '../../components/ui/ColorPickerField'
 import { RangeSlider } from '../../components/ui/RangeSlider'
@@ -16,6 +16,7 @@ const componentOptions: { id: ComponentKind; label: string; description: string;
   { id: 'toggle', label: 'Toggle', description: 'On or off states', mark: '◉' },
   { id: 'slider', label: 'Slider', description: 'Adjustable values', mark: '⌁' },
   { id: 'badge', label: 'Badge', description: 'Status and metadata', mark: '●' },
+  { id: 'alert', label: 'Alert', description: 'Helpful status messages', mark: '!' },
   { id: 'select', label: 'Select', description: 'Choose an option', mark: '⌄' },
   { id: 'modal', label: 'Modal', description: 'Focused dialog states', mark: '▢' },
   { id: 'tooltip', label: 'Tooltip', description: 'Helpful context', mark: '?' },
@@ -23,11 +24,11 @@ const componentOptions: { id: ComponentKind; label: string; description: string;
 ]
 const componentNames: Record<ComponentKind, string> = {
   button: 'Button', card: 'Card', input: 'Input field', toggle: 'Toggle', slider: 'Slider',
-  badge: 'Badge', select: 'Select', modal: 'Modal', tooltip: 'Tooltip', tabs: 'Tabs',
+  badge: 'Badge', alert: 'Alert', select: 'Select', modal: 'Modal', tooltip: 'Tooltip', tabs: 'Tabs',
 }
 const componentMarks: Record<ComponentKind, string> = {
   button: '↗', card: '▱', input: 'Aa', toggle: '◉', slider: '⌁',
-  badge: '●', select: '⌄', modal: '▢', tooltip: '?', tabs: 'Ⅱ',
+  badge: '●', alert: '!', select: '⌄', modal: '▢', tooltip: '?', tabs: 'Ⅱ',
 }
 
 function createInitialSettings(accent: string): EditorSettings {
@@ -37,11 +38,12 @@ function createInitialSettings(accent: string): EditorSettings {
     input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false },
     toggle: { size: 22, accent, defaultOn: true },
     slider: { min: 0, max: 100, value: 64, accent },
-    badge: { text: 'New', variant: 'accent', size: 'medium', showDot: true },
+    badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
+    alert: { variant: 'info', title: 'A new update is ready', description: 'Explore the latest improvements to your workspace.', dismissible: true },
     select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal', 'Experiments'], value: 'Interface Lab', disabled: false },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space for a short decision or a little more detail.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context, right when you need it.', placement: 'top' },
-    tabs: { labels: ['Overview', 'Activity', 'Settings'], activeIndex: 0 },
+    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0 },
   }
 }
 
@@ -61,6 +63,10 @@ function TextProperty({ label, value, onChange, placeholder, maxLength }: { labe
       <input type="text" value={value} placeholder={placeholder} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
+}
+
+function TextAreaProperty({ label, value, onChange, maxLength }: { label: string; value: string; onChange: (value: string) => void; maxLength?: number }) {
+  return <label className="editor-property text-property"><span>{label}</span><textarea value={value} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} /></label>
 }
 
 function SelectProperty<T extends string>({ label, value, options, onChange, placeholder }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; placeholder?: string }) {
@@ -92,6 +98,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   const [notice, setNotice] = useState('')
   const [copyNotice, setCopyNotice] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [alertDismissed, setAlertDismissed] = useState(false)
   const modalDialogRef = useRef<HTMLDivElement>(null)
   const modalTriggerRef = useRef<HTMLButtonElement>(null)
   const wasModalOpenRef = useRef(false)
@@ -110,6 +117,8 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         ? 'JavaScript is needed to open and close the dialog and return focus to its trigger.'
         : selected === 'tabs'
           ? 'JavaScript is needed to switch the selected tab and reveal its panel.'
+        : selected === 'alert'
+          ? 'The dismiss action needs JavaScript to remove the alert; the status role and styling are included.'
           : selected === 'tooltip'
             ? 'The tooltip appears on hover and keyboard focus using CSS.'
             : 'This semantic HTML control works natively; the CSS export supplies its appearance.'
@@ -121,6 +130,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   }, [modalOpen])
 
   function update<K extends ComponentKind>(component: K, updates: Partial<EditorSettings[K]>) {
+    if (component === 'alert') setAlertDismissed(false)
     setSettings((current) => ({ ...current, [component]: { ...current[component], ...updates } }))
   }
 
@@ -135,7 +145,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     const properties = selected === 'select'
       ? { ...settings.select, options: [...settings.select.options] }
       : selected === 'tabs'
-        ? { ...settings.tabs, labels: [...settings.tabs.labels] }
+        ? { ...settings.tabs, labels: [...settings.tabs.labels], contents: [...settings.tabs.contents] }
         : { ...settings[selected] }
     const preset = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -159,10 +169,11 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     const restoredProperties = preset.component === 'select'
       ? { ...preset.properties, options: [...preset.properties.options] }
       : preset.component === 'tabs'
-        ? { ...preset.properties, labels: [...preset.properties.labels] }
+        ? { ...preset.properties, labels: [...preset.properties.labels], contents: [...(preset.properties.contents ?? preset.properties.labels.map((label) => `This panel is showing the ${label} view.`))] }
         : { ...preset.properties }
     setSelected(preset.component)
     setModalOpen(false)
+    if (preset.component === 'alert') setAlertDismissed(false)
     setSettings((current) => ({ ...current, [preset.component]: restoredProperties }) as EditorSettings)
     setInputValue('')
     setNotice(`Loaded “${preset.name}”.`)
@@ -241,7 +252,14 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'badge') {
       const badge = settings.badge
-      return <span className={`editor-badge-preview is-${badge.variant} is-${badge.size}`}>{badge.showDot && <i aria-hidden="true" />}{badge.text}</span>
+      return <span className={`editor-badge-preview is-${badge.variant} tone-${badge.color} is-${badge.size}`}>{badge.showDot && <i aria-hidden="true" />}{badge.text}</span>
+    }
+
+    if (selected === 'alert') {
+      const alert = settings.alert
+      if (alertDismissed) return <p className="editor-alert-dismissed">Alert dismissed</p>
+      const icon = alert.variant === 'success' ? '✓' : alert.variant === 'warning' ? '!' : alert.variant === 'error' ? '×' : 'i'
+      return <div className={`editor-alert-preview is-${alert.variant}`} role={alert.variant === 'error' ? 'alert' : 'status'}><span className="editor-alert-icon" aria-hidden="true">{icon}</span><div className="editor-alert-copy">{alert.title && <strong>{alert.title}</strong>}{alert.description && <p>{alert.description}</p>}</div>{alert.dismissible && <button type="button" className="editor-alert-dismiss" aria-label="Dismiss alert" onClick={() => setAlertDismissed(true)}>×</button>}</div>
     }
 
     if (selected === 'select') {
@@ -297,7 +315,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
             }}>{label}</button>)}
           </div>
           <section className="editor-tabs-panel" id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={activeTabId} tabIndex={0}>
-            <span className="editor-tabs-kicker">CURRENT VIEW</span><h3>{activeLabel}</h3><p>This panel is showing the {activeLabel} view.</p>
+            <span className="editor-tabs-kicker">CURRENT VIEW</span><h3>{activeLabel}</h3><p>{tabs.contents?.[activeIndex] ?? `This panel is showing the ${activeLabel} view.`}</p>
           </section>
         </div>
       )
@@ -355,9 +373,19 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const badge = settings.badge
       return <>
         <TextProperty label="Badge text" value={badge.text} maxLength={120} onChange={(text) => update('badge', { text })} />
-        <SelectProperty label="Variant" value={badge.variant} options={[{ value: 'neutral', label: 'Neutral' }, { value: 'accent', label: 'Accent' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(variant) => update('badge', { variant })} />
-        <SelectProperty label="Size" value={badge.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }]} onChange={(size) => update('badge', { size })} />
+        <SelectProperty label="Appearance" value={badge.variant} options={[{ value: 'default', label: 'Default' }, { value: 'subtle', label: 'Subtle' }, { value: 'outlined', label: 'Outlined' }]} onChange={(variant) => update('badge', { variant })} />
+        <SelectProperty label="Semantic color" value={badge.color} options={[{ value: 'neutral', label: 'Neutral' }, { value: 'primary', label: 'Primary' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(color) => update('badge', { color })} />
+        <SelectProperty label="Size" value={badge.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('badge', { size })} />
         <BooleanProperty label="Status dot" checked={badge.showDot} onChange={(showDot) => update('badge', { showDot })} />
+      </>
+    }
+    if (selected === 'alert') {
+      const alert = settings.alert
+      return <>
+        <SelectProperty label="Variant" value={alert.variant} options={[{ value: 'info', label: 'Information' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(variant) => update('alert', { variant })} />
+        <TextProperty label="Title (optional)" value={alert.title} maxLength={120} onChange={(title) => update('alert', { title })} />
+        <TextProperty label="Description" value={alert.description} maxLength={300} onChange={(description) => update('alert', { description })} />
+        <BooleanProperty label="Dismiss action" checked={alert.dismissible} onChange={(dismissible) => update('alert', { dismissible })} />
       </>
     }
     if (selected === 'select') {
@@ -393,11 +421,15 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     if (selected === 'tabs') {
       const tabs = settings.tabs
       return <>
-        {tabs.labels.map((label, index) => <TextProperty key={index} label={`Tab ${index + 1} label`} value={label} maxLength={40} onChange={(nextLabel) => {
+        {tabs.labels.map((label, index) => <Fragment key={index}><TextProperty label={`Tab ${index + 1} label`} value={label} maxLength={40} onChange={(nextLabel) => {
           const labels = [...tabs.labels]
           labels[index] = nextLabel
           update('tabs', { labels })
-        }} />)}
+        }} /><TextAreaProperty label={`Tab ${index + 1} content`} value={tabs.contents?.[index] ?? ''} maxLength={240} onChange={(content) => {
+          const contents = [...(tabs.contents ?? tabs.labels.map((tabLabel) => `This panel is showing the ${tabLabel} view.`))]
+          contents[index] = content
+          update('tabs', { contents })
+        }} /></Fragment>)}
         <SelectProperty label="Active tab" value={String(tabs.activeIndex)} options={tabs.labels.map((label, index) => ({ value: String(index), label }))} onChange={(activeIndex) => update('tabs', { activeIndex: Number(activeIndex) })} />
       </>
     }
@@ -459,7 +491,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         <nav className="editor-selector" aria-label="Choose a component">
           <div className="editor-panel-heading"><span>COMPONENTS</span><small>{componentOptions.length.toString().padStart(2, '0')}</small></div>
           {componentOptions.map((component, index) => (
-            <button className={`component-choice${selected === component.id ? ' is-selected' : ''}`} type="button" key={component.id} aria-pressed={selected === component.id} onClick={() => { setSelected(component.id); setModalOpen(false) }}>
+            <button className={`component-choice${selected === component.id ? ' is-selected' : ''}`} type="button" key={component.id} aria-pressed={selected === component.id} onClick={() => { setSelected(component.id); setModalOpen(false); if (component.id === 'alert') setAlertDismissed(false) }}>
               <span className="component-choice-mark">{component.mark}</span><span className="component-choice-copy"><strong>{component.label}</strong><small>{component.description}</small></span><kbd>{String(index + 1).padStart(2, '0')}</kbd>
             </button>
           ))}

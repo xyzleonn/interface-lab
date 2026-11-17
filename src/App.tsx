@@ -148,7 +148,7 @@ function Sidebar({ currentPage }: { currentPage: PageId }) {
   return (
     <aside className="sidebar" aria-label="Main navigation">
       <a className="brand" href="#overview" aria-label="Interface Lab home">
-        <span className="brand-mark" aria-hidden="true"><span /></span>
+        <img className="brand-mark" src="/assets/interface-lab-logo.png.png" alt="" aria-hidden="true" />
         <span className="brand-name">interface<span>lab</span></span>
         <span className="brand-version">BETA</span>
       </a>

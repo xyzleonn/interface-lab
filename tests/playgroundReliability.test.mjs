@@ -14,10 +14,10 @@ import { designTokensToCss } from '../src/features/tokens/tokenCss.ts'
 import { generateTypographyFontCss } from '../src/features/tokens/typographyExport.ts'
 import { getNextOverviewHeadlineIndex, overviewHeadlines } from '../src/features/dashboard/overviewHeadlines.ts'
 
-const components = ['button', 'card', 'input', 'toggle', 'slider', 'badge', 'select', 'modal', 'tooltip', 'tabs']
+const components = ['button', 'card', 'input', 'toggle', 'slider', 'badge', 'alert', 'select', 'modal', 'tooltip', 'tabs']
 const exportClasses = {
   button: 'il-export-button', card: 'il-export-card', input: 'il-export-input',
-  toggle: 'il-export-toggle', slider: 'il-export-slider', badge: 'il-export-badge',
+  toggle: 'il-export-toggle', slider: 'il-export-slider', badge: 'il-export-badge', alert: 'il-export-alert',
   select: 'il-export-select', modal: 'il-export-modal', tooltip: 'il-export-tooltip', tabs: 'il-export-tabs',
 }
 
@@ -28,11 +28,12 @@ function createSettings() {
     input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false },
     toggle: { size: 22, accent: '#a997f5', defaultOn: true },
     slider: { min: 0, max: 100, value: 64, accent: '#a997f5' },
-    badge: { text: 'New', variant: 'accent', size: 'medium', showDot: true },
+    badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
+    alert: { variant: 'info', title: 'Heads up', description: 'New features are ready.', dismissible: true },
     select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal'], value: 'Interface Lab', disabled: false },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context.', placement: 'top' },
-    tabs: { labels: ['Overview', 'Activity', 'Settings'], activeIndex: 0 },
+    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0 },
   }
 }
 
@@ -66,7 +67,7 @@ test('empty Select options survive preset save and restore without fabrication',
 test('preset round trips preserve Select and Tabs property values exactly', () => {
   const settings = createSettings()
   settings.select = { ...settings.select, options: ['One', 'Two'], value: 'Two' }
-  settings.tabs = { labels: ['Overview', '', ' Settings '], activeIndex: 2 }
+  settings.tabs = { labels: ['Overview', '', ' Settings '], contents: ['First panel', '', 'Third panel'], activeIndex: 2 }
   const presets = [
     { id: 'select', name: 'Select setup', savedAt: Date.now(), component: 'select', properties: settings.select },
     { id: 'tabs', name: 'Tabs setup', savedAt: Date.now(), component: 'tabs', properties: settings.tabs },
@@ -78,6 +79,54 @@ test('preset round trips preserve Select and Tabs property values exactly', () =
   assert.deepEqual(restored[1].properties, settings.tabs)
 })
 
+test('legacy Badge presets migrate semantic variants and preserve appearance', () => {
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify([
+    { id: 'legacy-badge', name: 'Legacy badge', savedAt: Date.now(), component: 'badge', properties: { text: 'Ready', variant: 'accent', size: 'medium', showDot: true } },
+  ]))
+
+  const [preset] = loadPresets()
+  assert.equal(preset.component, 'badge')
+  assert.deepEqual(preset.properties, { text: 'Ready', variant: 'default', color: 'primary', size: 'medium', showDot: true })
+})
+
+test('legacy Tabs presets receive compatible default panel content', () => {
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify([
+    { id: 'legacy-tabs', name: 'Legacy tabs', savedAt: Date.now(), component: 'tabs', properties: { labels: ['Overview', 'Activity'], activeIndex: 1 } },
+  ]))
+  const [preset] = loadPresets()
+  assert.deepEqual(preset.properties.contents, ['This panel is showing the Overview view.', 'This panel is showing the Activity view.'])
+})
+
+test('Badge appearance and Alert properties round trip and export all formats', () => {
+  const settings = createSettings()
+  settings.badge = { text: 'Ready', variant: 'outlined', color: 'warning', size: 'large', showDot: false }
+  settings.alert = { variant: 'error', title: 'Careful <now>', description: 'Use & check "details".', dismissible: true }
+  const presets = [
+    { id: 'new-badge', name: 'Outlined warning', savedAt: Date.now(), component: 'badge', properties: settings.badge },
+    { id: 'alert', name: 'Error alert', savedAt: Date.now(), component: 'alert', properties: settings.alert },
+  ]
+
+  assert.equal(savePresets(presets), true)
+  assert.deepEqual(loadPresets().map(({ properties }) => properties), [settings.badge, settings.alert])
+
+  for (const component of ['badge', 'alert']) {
+    const html = generateComponentHtml(component, settings)
+    const css = generateComponentCss(component, settings)
+    const tsx = generateComponentTsx(component, settings)
+    assert.match(html, /il-export-/)
+    assert.match(css, /il-export-/)
+    assert.match(tsx, /export interface/)
+  }
+
+  assert.match(generateComponentHtml('badge', settings), /il-export-badge--outlined il-export-badge--warning il-export-badge--large/)
+  assert.doesNotMatch(generateComponentHtml('alert', settings), /Careful <now>/)
+  assert.match(generateComponentHtml('alert', settings), /Careful &lt;now&gt;/)
+  assert.match(generateComponentHtml('alert', settings), /role="alert" aria-live="assertive"/)
+  assert.match(generateComponentCss('alert', settings), /--color-error/)
+  assert.match(generateComponentTsx('badge', settings), /export type BadgeColor = 'neutral' \| 'primary' \| 'success' \| 'warning' \| 'error'/)
+  assert.match(generateComponentTsx('alert', settings), /onDismiss\?: \(\) => void/)
+})
+
 test('HTML exports escape user-provided text and attributes', () => {
   const settings = createSettings()
   const hostile = `</script><img src=x onerror="alert('x')"> & */`
@@ -85,14 +134,16 @@ test('HTML exports escape user-provided text and attributes', () => {
   settings.select = { ...settings.select, label: hostile, placeholder: hostile, options: [hostile], value: hostile }
   settings.modal = { ...settings.modal, title: hostile, description: hostile, triggerText: hostile }
   settings.tooltip = { ...settings.tooltip, triggerText: hostile, content: hostile }
-  settings.tabs = { labels: [hostile, 'Second'], activeIndex: 0 }
+  settings.tabs = { labels: [hostile, 'Second'], contents: [hostile, 'Panel content'], activeIndex: 0 }
 
   const buttonHtml = generateComponentHtml('button', settings)
   const selectHtml = generateComponentHtml('select', settings)
   const modalHtml = generateComponentHtml('modal', settings)
   const tooltipHtml = generateComponentHtml('tooltip', settings)
+  settings.alert = { ...settings.alert, title: hostile, description: hostile }
+  const alertHtml = generateComponentHtml('alert', settings)
   const tabsHtml = generateComponentHtml('tabs', settings)
-  for (const html of [buttonHtml, selectHtml, modalHtml, tooltipHtml, tabsHtml]) {
+  for (const html of [buttonHtml, selectHtml, modalHtml, tooltipHtml, alertHtml, tabsHtml]) {
     assert.doesNotMatch(html, /<img src=x/)
     assert.match(html, /&lt;img/)
     assert.match(html, /&amp;/)
@@ -114,9 +165,17 @@ test('generated dialog, tooltip, and tab exports expose their semantic relations
   assert.match(tabsHtml, /role="tab"[^>]*aria-controls="il-export-panel-0"/)
   assert.match(tabsHtml, /role="tabpanel" aria-labelledby="il-export-tab-0" tabindex="0"/)
   assert.match(tabsTsx, /role="tabpanel"[^>]*tabIndex=\{0\}/)
+  assert.match(tabsTsx, /contents\?: string\[\]/)
 })
 
-test('all ten component types produce scoped HTML, CSS, and parseable, type-checked TSX', () => {
+test('Tabs panel content is independently editable and exported in HTML and TSX', () => {
+  const settings = createSettings()
+  settings.tabs.contents[1] = 'A custom second panel.'
+  assert.match(generateComponentHtml('tabs', settings), /<p>A custom second panel\.<\/p>/)
+  assert.match(generateComponentTsx('tabs', settings), /A custom second panel\./)
+})
+
+test('all eleven component types produce scoped HTML, CSS, and parseable, type-checked TSX', () => {
   const settings = createSettings()
   const tempParent = path.resolve('node_modules/.tmp')
   mkdirSync(tempParent, { recursive: true })

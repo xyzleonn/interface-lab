@@ -72,21 +72,44 @@ export function getSafeTabsLabels(labels: unknown) {
   return normalized.length >= 2 ? normalized : ['Overview', 'Activity']
 }
 
+export function getSafeTabsContents(contents: unknown, labels: string[]) {
+  const source = Array.isArray(contents) ? contents : []
+  return labels.map((label, index) => typeof source[index] === 'string' ? source[index] : `This panel is showing the ${label} view.`)
+}
+
 function safeTabIndex(value: number, length: number) {
   const index = Number.isFinite(value) ? Math.trunc(value) : 0
   return Math.max(0, Math.min(length - 1, index))
 }
 
 function getBadgeCss() {
-  return `.il-export-badge { display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid var(--color-border, rgb(228 226 245 / 9%)); border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1; }
+  return `.il-export-badge { --badge-color: var(--color-text-muted, #a1a1ae); --badge-foreground: #191722; display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid var(--color-border, rgb(228 226 245 / 9%)); border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1; }
 .il-export-badge--small { padding: 7px 10px; font-size: 11px; }
 .il-export-badge--medium { padding: 10px 14px; font-size: 14px; }
-.il-export-badge--neutral { border-color: var(--color-border, rgb(228 226 245 / 9%)); background: color-mix(in srgb,var(--color-text-muted, #a1a1ae) 8%,var(--color-surface, #171820)); color: var(--color-text-muted, #a1a1ae); }
-.il-export-badge--accent { border-color: var(--color-accent-border, rgb(169 151 245 / 48%)); background: var(--color-accent-soft, rgb(169 151 245 / 14%)); color: var(--color-accent, #a997f5); }
-.il-export-badge--success { border-color: color-mix(in srgb,var(--color-success, #7dbb9b) 42%,transparent); background: color-mix(in srgb,var(--color-success, #7dbb9b) 12%,var(--color-surface, #171820)); color: var(--color-success, #7dbb9b); }
-.il-export-badge--warning { border-color: color-mix(in srgb,var(--color-warning, #eab66f) 42%,transparent); background: color-mix(in srgb,var(--color-warning, #eab66f) 12%,var(--color-surface, #171820)); color: var(--color-warning, #eab66f); }
-.il-export-badge--error { border-color: color-mix(in srgb,var(--color-error, #d38b99) 42%,transparent); background: color-mix(in srgb,var(--color-error, #d38b99) 12%,var(--color-surface, #171820)); color: var(--color-error, #d38b99); }
+.il-export-badge--large { padding: 12px 17px; font-size: 16px; }
+.il-export-badge--neutral { --badge-color: var(--color-text-muted, #a1a1ae); }
+.il-export-badge--primary { --badge-color: var(--color-accent, #a997f5); --badge-foreground: var(--color-accent-contrast, #191722); }
+.il-export-badge--success { --badge-color: var(--color-success, #7dbb9b); }
+.il-export-badge--warning { --badge-color: var(--color-warning, #eab66f); }
+.il-export-badge--error { --badge-color: var(--color-error, #d38b99); }
+.il-export-badge--default { border-color: color-mix(in srgb,var(--badge-color) 45%,transparent); background: var(--badge-color); color: var(--badge-foreground); }
+.il-export-badge--subtle { border-color: color-mix(in srgb,var(--badge-color) 34%,transparent); background: color-mix(in srgb,var(--badge-color) 13%,var(--color-surface, #171820)); color: var(--badge-color); }
+.il-export-badge--outlined { border-color: color-mix(in srgb,var(--badge-color) 60%,transparent); background: transparent; color: var(--badge-color); }
 .il-export-badge__dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px color-mix(in srgb,currentColor 45%,transparent); }`
+}
+
+function getAlertCss() {
+  return `.il-export-alert { --alert-color: var(--color-accent, #a997f5); display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: start; gap: 12px; width: min(100%,560px); padding: 17px; border: 1px solid color-mix(in srgb,var(--alert-color) 32%,transparent); border-radius: var(--radius-md, 10px); background: color-mix(in srgb,var(--alert-color) 9%,var(--color-surface, #171820)); color: var(--color-text, #e9e8ef); box-shadow: var(--shadow-card, 0 14px 38px rgb(0 0 0 / 14%)); text-align: left; }
+.il-export-alert--success { --alert-color: var(--color-success, #7dbb9b); }
+.il-export-alert--warning { --alert-color: var(--color-warning, #eab66f); }
+.il-export-alert--error { --alert-color: var(--color-error, #d38b99); }
+.il-export-alert__icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid color-mix(in srgb,var(--alert-color) 34%,transparent); border-radius: 9px; background: color-mix(in srgb,var(--alert-color) 15%,transparent); color: var(--alert-color); font-size: 15px; font-weight: 700; }
+.il-export-alert__copy { min-width: 0; padding-top: 2px; }
+.il-export-alert__copy strong { color: var(--color-text, #e9e8ef); font-size: var(--font-size-sm, 14px); font-weight: 550; }
+.il-export-alert__copy p { margin: 4px 0 0; color: var(--color-text-muted, #a1a1ae); font-size: var(--font-size-xs, 12px); line-height: 1.55; }
+.il-export-alert__dismiss { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--color-text-muted, #a1a1ae); font: inherit; font-size: 18px; cursor: pointer; }
+.il-export-alert__dismiss:hover { border-color: var(--color-accent-border); background: var(--color-accent-soft); color: var(--color-accent); }
+.il-export-alert__dismiss:focus-visible { border-color: var(--color-accent-border); background: var(--color-accent-soft); color: var(--color-accent); outline: 2px solid var(--color-accent); outline-offset: 2px; }`
 }
 
 function getSelectCss() {
@@ -274,6 +297,7 @@ export function generateComponentCss(component: ComponentKind, settings: EditorS
     case 'toggle': return `/* Initial state: ${settings.toggle.defaultOn ? 'on' : 'off'} */\n${getToggleCss(settings.toggle)}`
     case 'slider': return `/* Range: min ${safeNumber(settings.slider.min, 0)}, max ${safeNumber(settings.slider.max, 100)}, initial ${safeNumber(settings.slider.value, 0)} */\n${getSliderCss(settings.slider)}`
     case 'badge': return getBadgeCss()
+    case 'alert': return getAlertCss()
     case 'select': return getSelectCss()
     case 'modal': return getModalCss()
     case 'tooltip': return getTooltipCss()
@@ -299,7 +323,13 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
     }
     case 'badge': {
       const badge = settings.badge
-      return `<span class="il-export-badge il-export-badge--${badge.variant} il-export-badge--${badge.size}">${badge.showDot ? '<i class="il-export-badge__dot" aria-hidden="true"></i>' : ''}${escapeHtml(badge.text)}</span>`
+      return `<span class="il-export-badge il-export-badge--${badge.variant} il-export-badge--${badge.color} il-export-badge--${badge.size}">${badge.showDot ? '<i class="il-export-badge__dot" aria-hidden="true"></i>' : ''}${escapeHtml(badge.text)}</span>`
+    }
+    case 'alert': {
+      const alert = settings.alert
+      const icon = alert.variant === 'success' ? '✓' : alert.variant === 'warning' ? '!' : alert.variant === 'error' ? '×' : 'i'
+      const role = alert.variant === 'error' ? 'alert' : 'status'
+      return `<div class="il-export-alert il-export-alert--${alert.variant}" role="${role}" aria-live="${alert.variant === 'error' ? 'assertive' : 'polite'}"><span class="il-export-alert__icon" aria-hidden="true">${icon}</span><div class="il-export-alert__copy">${alert.title ? `<strong>${escapeHtml(alert.title)}</strong>` : ''}${alert.description ? `<p>${escapeHtml(alert.description)}</p>` : ''}</div>${alert.dismissible ? '<button type="button" class="il-export-alert__dismiss" aria-label="Dismiss alert">×</button>' : ''}</div>`
     }
     case 'select': {
       const select = settings.select
@@ -339,10 +369,11 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
     }
     case 'tabs': {
       const safeLabels = getSafeTabsLabels(settings.tabs.labels)
+      const safeContents = getSafeTabsContents(settings.tabs.contents, safeLabels)
       const activeIndex = safeTabIndex(settings.tabs.activeIndex, safeLabels.length)
       const tabs = safeLabels.map((label, index) => `<button class="il-export-tabs__tab" id="il-export-tab-${index}" type="button" role="tab" aria-selected="${index === activeIndex}" aria-controls="il-export-panel-${index}"${index === activeIndex ? '' : ' tabindex="-1"'}>${escapeHtml(label)}</button>`).join('\n    ')
       const panels = safeLabels.map((label, index) => `<section class="il-export-tabs__panel" id="il-export-panel-${index}" role="tabpanel" aria-labelledby="il-export-tab-${index}" tabindex="0"${index === activeIndex ? '' : ' hidden'}>
-      <span class="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>${escapeHtml(label)}</h3><p>This panel is showing the ${escapeHtml(label)} view.</p>
+      <span class="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>${escapeHtml(label)}</h3><p>${escapeHtml(safeContents[index])}</p>
     </section>`).join('\n    ')
       return `<!-- JavaScript required to update selected tabs and reveal their associated panels. -->
 <div class="il-export-tabs">
@@ -387,22 +418,53 @@ export function generateComponentTsx(component: ComponentKind, settings: EditorS
     case 'badge': {
       const badge = settings.badge
       return `/* Import the matching CSS export alongside this component. */
-export type BadgeVariant = 'neutral' | 'accent' | 'success' | 'warning' | 'error'
-export type BadgeSize = 'small' | 'medium'
+export type BadgeVariant = 'default' | 'subtle' | 'outlined'
+export type BadgeColor = 'neutral' | 'primary' | 'success' | 'warning' | 'error'
+export type BadgeSize = 'small' | 'medium' | 'large'
 
 export interface BadgeProps {
   text?: string
   variant?: BadgeVariant
+  color?: BadgeColor
   size?: BadgeSize
   showDot?: boolean
 }
 
-export function Badge({ text = ${tsxLiteral(badge.text)}, variant = ${tsxLiteral(badge.variant)}, size = ${tsxLiteral(badge.size)}, showDot = ${badge.showDot} }: BadgeProps) {
+export function Badge({ text = ${tsxLiteral(badge.text)}, variant = ${tsxLiteral(badge.variant)}, color = ${tsxLiteral(badge.color)}, size = ${tsxLiteral(badge.size)}, showDot = ${badge.showDot} }: BadgeProps) {
   return (
-    <span className={\`il-export-badge il-export-badge--\${variant} il-export-badge--\${size}\`}>
+    <span className={\`il-export-badge il-export-badge--\${variant} il-export-badge--\${color} il-export-badge--\${size}\`}>
       {showDot && <i className="il-export-badge__dot" aria-hidden="true" />}
       {text}
     </span>
+  )
+}`
+    }
+    case 'alert': {
+      const alert = settings.alert
+      return `/* Import the matching CSS export alongside this component. */
+import { useState } from 'react'
+
+export type AlertVariant = 'info' | 'success' | 'warning' | 'error'
+
+export interface AlertProps {
+  variant?: AlertVariant
+  title?: string
+  description?: string
+  dismissible?: boolean
+  onDismiss?: () => void
+}
+
+export function Alert({ variant = ${tsxLiteral(alert.variant)}, title = ${tsxLiteral(alert.title)}, description = ${tsxLiteral(alert.description)}, dismissible = ${alert.dismissible}, onDismiss }: AlertProps) {
+  const [visible, setVisible] = useState(true)
+  if (!visible) return null
+  const icon = variant === 'success' ? '✓' : variant === 'warning' ? '!' : variant === 'error' ? '×' : 'i'
+  function dismiss() { setVisible(false); onDismiss?.() }
+  return (
+    <div className={\`il-export-alert il-export-alert--\${variant}\`} role={variant === 'error' ? 'alert' : 'status'} aria-live={variant === 'error' ? 'assertive' : 'polite'}>
+      <span className="il-export-alert__icon" aria-hidden="true">{icon}</span>
+      <div className="il-export-alert__copy">{title && <strong>{title}</strong>}{description && <p>{description}</p>}</div>
+      {dismissible && <button type="button" className="il-export-alert__dismiss" aria-label="Dismiss alert" onClick={dismiss}>×</button>}
+    </div>
   )
 }`
     }
@@ -587,22 +649,25 @@ export function Tooltip({ triggerText = ${tsxLiteral(tooltip.triggerText)}, cont
     case 'tabs': {
       const tabs = settings.tabs
       const safeLabels = getSafeTabsLabels(tabs.labels)
+      const safeContents = getSafeTabsContents(tabs.contents, safeLabels)
       const defaultIndex = safeTabIndex(tabs.activeIndex, safeLabels.length)
       return `/* Import the matching CSS export alongside this component. */
 import { useId, useState, type KeyboardEvent } from 'react'
 
 export interface TabsProps {
   labels?: string[]
+  contents?: string[]
   activeIndex?: number
   onActiveIndexChange?: (index: number) => void
 }
 
-export function Tabs({ labels = ${JSON.stringify(safeLabels)}, activeIndex, onActiveIndexChange }: TabsProps) {
+export function Tabs({ labels = ${JSON.stringify(safeLabels)}, contents = ${JSON.stringify(safeContents)}, activeIndex, onActiveIndexChange }: TabsProps) {
   const id = useId()
   const inputLabels = labels.slice(0, 6)
   const safeTabLabels = inputLabels.length >= 2
     ? inputLabels.map((label, index) => label.trim() || \`Tab \${index + 1}\`)
     : ${JSON.stringify(safeLabels)}
+  const safeTabContents = safeTabLabels.map((label, index) => typeof contents[index] === 'string' ? contents[index] : \`This panel is showing the \${label} view.\`)
   const [internalIndex, setInternalIndex] = useState(${defaultIndex})
   const requestedIndex = activeIndex ?? internalIndex
   const selectedIndex = Number.isFinite(requestedIndex) ? Math.max(0, Math.min(safeTabLabels.length - 1, Math.trunc(requestedIndex))) : 0
@@ -627,7 +692,7 @@ export function Tabs({ labels = ${JSON.stringify(safeLabels)}, activeIndex, onAc
         {safeTabLabels.map((label, index) => <button className="il-export-tabs__tab" id={\`\${id}-tab-\${index}\`} key={\`\${label}-\${index}\`} type="button" role="tab" aria-selected={index === selectedIndex} aria-controls={\`\${id}-tabpanel\`} tabIndex={index === selectedIndex ? 0 : -1} onClick={() => activate(index)} onKeyDown={(event) => handleKeyDown(event,index)}>{label}</button>)}
       </div>
       <section className="il-export-tabs__panel" id={\`\${id}-tabpanel\`} role="tabpanel" aria-labelledby={\`\${id}-tab-\${selectedIndex}\`} tabIndex={0}>
-        <span className="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>{activeLabel}</h3><p>This panel is showing the {activeLabel} view.</p>
+        <span className="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>{activeLabel}</h3><p>{safeTabContents[selectedIndex]}</p>
       </section>
     </div>
   )

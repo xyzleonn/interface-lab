@@ -3,7 +3,8 @@ import type { ComponentPreset, EditorSettings } from './editorTypes'
 const presetStorageKey = 'interface-lab-component-presets-v1'
 const sizeOptions = ['small', 'medium', 'large']
 const buttonVariants = ['primary', 'secondary', 'ghost']
-const badgeVariants = ['neutral', 'accent', 'success', 'warning', 'error']
+const badgeVariants = ['default', 'subtle', 'outlined']
+const badgeColors = ['neutral', 'primary', 'success', 'warning', 'error']
 const tooltipPlacements = ['top', 'right', 'bottom', 'left']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,8 +69,18 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
     return typeof properties.text === 'string'
       && properties.text.length <= 120
       && badgeVariants.includes(String(properties.variant))
-      && ['small', 'medium'].includes(String(properties.size))
+      && badgeColors.includes(String(properties.color))
+      && sizeOptions.includes(String(properties.size))
       && typeof properties.showDot === 'boolean'
+  }
+
+  if (component === 'alert') {
+    return ['info', 'success', 'warning', 'error'].includes(String(properties.variant))
+      && typeof properties.title === 'string'
+      && properties.title.length <= 120
+      && typeof properties.description === 'string'
+      && properties.description.length <= 300
+      && typeof properties.dismissible === 'boolean'
   }
 
   if (component === 'select') {
@@ -109,6 +120,9 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && properties.labels.length >= 2
       && properties.labels.length <= 6
       && properties.labels.every((label) => typeof label === 'string' && label.length <= 40)
+      && Array.isArray(properties.contents)
+      && properties.contents.length === properties.labels.length
+      && properties.contents.every((content) => typeof content === 'string' && content.length <= 240)
       && isFiniteNumber(properties.activeIndex)
       && Number.isInteger(properties.activeIndex)
       && properties.activeIndex >= 0
@@ -135,10 +149,38 @@ export function loadPresets(): ComponentPreset[] {
     if (!stored) return []
     const parsed: unknown = JSON.parse(stored)
     if (!Array.isArray(parsed)) return []
-    const validPresets = parsed.filter(isPreset)
+    const validPresets = parsed.map(migrateLegacyPreset).filter(isPreset)
     return validPresets.filter((preset, index) => validPresets.findIndex((candidate) => candidate.id === preset.id) === index)
   } catch {
     return []
+  }
+}
+
+function migrateLegacyPreset(value: unknown): unknown {
+  if (isRecord(value) && value.component === 'tabs' && isRecord(value.properties)) {
+    const properties = value.properties
+    if (Array.isArray(properties.labels) && !('contents' in properties)) {
+      return {
+        ...value,
+        properties: {
+          ...properties,
+          contents: properties.labels.map((label) => `This panel is showing the ${String(label)} view.`),
+        },
+      }
+    }
+  }
+  if (!isRecord(value) || value.component !== 'badge' || !isRecord(value.properties)) return value
+  const properties = value.properties
+  if ('color' in properties || !['neutral', 'accent', 'success', 'warning', 'error'].includes(String(properties.variant))) return value
+  const color = properties.variant === 'accent' ? 'primary' : properties.variant
+  return {
+    ...value,
+    properties: {
+      ...properties,
+      variant: 'default',
+      color,
+      size: ['small', 'medium'].includes(String(properties.size)) ? properties.size : 'medium',
+    },
   }
 }
 

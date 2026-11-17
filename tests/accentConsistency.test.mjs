@@ -60,11 +60,12 @@ test('exported input focus uses semantic variables without a lavender fallback',
     input: { placeholder: 'Email', radius: 8, size: 'medium', disabled: false },
     toggle: { size: 22, accent: '#3267d5', defaultOn: false },
     slider: { min: 0, max: 100, value: 50, accent: '#3267d5' },
-    badge: { text: 'New', variant: 'accent', size: 'medium', showDot: false },
+    badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: false },
+    alert: { variant: 'info', title: 'Heads up', description: 'New features are ready.', dismissible: true },
     select: { label: 'Choose', placeholder: 'Select', options: [], value: '', disabled: false },
     modal: { triggerText: 'Open', title: 'Title', description: 'Description', size: 'medium' },
     tooltip: { triggerText: 'More', content: 'Details', placement: 'top' },
-    tabs: { labels: ['One', 'Two'], activeIndex: 0 },
+    tabs: { labels: ['One', 'Two'], contents: ['First content', 'Second content'], activeIndex: 0 },
   }
   const css = generateComponentCss('input', settings)
   const focusRule = css.match(/\.il-export-input:focus\s*\{[^}]+\}/)?.[0]
