@@ -23,17 +23,17 @@ const exportClasses = {
 
 function createSettings() {
   return {
-    button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project' },
+    button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project', previewState: 'default' },
     card: { radius: 16, padding: 26, shadow: 34, borderVisible: true },
-    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false },
-    toggle: { size: 22, accent: '#a997f5', defaultOn: true },
-    slider: { min: 0, max: 100, value: 64, accent: '#a997f5' },
+    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
+    toggle: { size: 22, accent: '#a997f5', defaultOn: true, previewState: 'default' },
+    slider: { min: 0, max: 100, value: 64, accent: '#a997f5', previewState: 'default' },
     badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
     alert: { variant: 'info', title: 'Heads up', description: 'New features are ready.', dismissible: true },
-    select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal'], value: 'Interface Lab', disabled: false },
+    select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal'], value: 'Interface Lab', disabled: false, previewState: 'default' },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context.', placement: 'top' },
-    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0 },
+    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0, previewState: 'default' },
   }
 }
 
@@ -67,7 +67,7 @@ test('empty Select options survive preset save and restore without fabrication',
 test('preset round trips preserve Select and Tabs property values exactly', () => {
   const settings = createSettings()
   settings.select = { ...settings.select, options: ['One', 'Two'], value: 'Two' }
-  settings.tabs = { labels: ['Overview', '', ' Settings '], contents: ['First panel', '', 'Third panel'], activeIndex: 2 }
+  settings.tabs = { labels: ['Overview', '', ' Settings '], contents: ['First panel', '', 'Third panel'], activeIndex: 2, previewState: 'default' }
   const presets = [
     { id: 'select', name: 'Select setup', savedAt: Date.now(), component: 'select', properties: settings.select },
     { id: 'tabs', name: 'Tabs setup', savedAt: Date.now(), component: 'tabs', properties: settings.tabs },
@@ -95,6 +95,75 @@ test('legacy Tabs presets receive compatible default panel content', () => {
   ]))
   const [preset] = loadPresets()
   assert.deepEqual(preset.properties.contents, ['This panel is showing the Overview view.', 'This panel is showing the Activity view.'])
+})
+
+test('legacy interactive presets migrate to semantic default preview states', () => {
+  const settings = createSettings()
+  const legacy = ['button', 'input', 'toggle', 'slider', 'select', 'tabs'].map((component) => {
+    const properties = { ...settings[component] }
+    delete properties.previewState
+    return { id: `legacy-${component}`, name: `Legacy ${component}`, savedAt: Date.now(), component, properties }
+  })
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify(legacy))
+
+  assert.deepEqual(loadPresets().map((preset) => preset.properties.previewState), Array(6).fill('default'))
+})
+
+test('preview state configuration survives presets and is represented in generated exports', () => {
+  const settings = createSettings()
+  settings.button.previewState = 'loading'
+  settings.input.previewState = 'error'
+  settings.toggle.previewState = 'disabled'
+  settings.slider.previewState = 'active'
+  settings.select.previewState = 'open'
+  settings.tabs.previewState = 'focus'
+  const presets = ['button', 'input', 'toggle', 'slider', 'select', 'tabs'].map((component) => ({
+    id: component, name: `${component} state`, savedAt: Date.now(), component, properties: settings[component],
+  }))
+  assert.equal(savePresets(presets), true)
+  assert.deepEqual(loadPresets().map((preset) => preset.properties.previewState), ['loading', 'error', 'disabled', 'active', 'open', 'focus'])
+
+  assert.match(generateComponentHtml('button', settings), /aria-busy="true"/)
+  assert.match(generateComponentHtml('button', settings), /il-export-button__spinner/)
+  assert.match(generateComponentHtml('input', settings), /aria-invalid="true"/)
+  assert.match(generateComponentHtml('toggle', settings), /data-preview-state="disabled" disabled/)
+  assert.match(generateComponentHtml('slider', settings), /data-preview-state="active"/)
+  assert.match(generateComponentHtml('select', settings), /static HTML cannot force their popup open/)
+  assert.match(generateComponentHtml('tabs', settings), /data-preview-state="focus"/)
+  assert.match(generateComponentCss('button', settings), /data-preview-state="active"/)
+  assert.match(generateComponentCss('input', settings), /\[aria-invalid="true"\]/)
+  assert.match(generateComponentTsx('button', settings), /previewState\?: 'default' \| 'hover' \| 'focus' \| 'active' \| 'disabled' \| 'loading'/)
+  assert.match(generateComponentTsx('toggle', settings), /disabled=\{previewState === 'disabled'\}/)
+  assert.match(generateComponentTsx('tabs', settings), /data-preview-state=\{previewState\}/)
+})
+
+test('Playground preview styles provide distinct semantic state treatments', () => {
+  const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')
+  for (const selector of [
+    "data-preview-state='hover'", "data-preview-state='focus'", "data-preview-state='active'",
+    "data-preview-state='error'", "button:disabled", "state-hover", "state-focus",
+  ]) assert.ok(css.includes(selector), `Missing preview style for ${selector}`)
+  assert.match(css, /prefers-reduced-motion:\s*reduce/)
+})
+
+test('Button loading preview renders a sized, contrasting spinner and disables activation', () => {
+  const jsx = readFileSync(new URL('../src/features/playground/VisualComponentEditor.tsx', import.meta.url), 'utf8')
+  const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')
+  assert.match(jsx, /isBusy && <span className="editor-button-spinner" aria-hidden="true" \/>/)
+  assert.match(jsx, /disabled=\{isDisabled\} ariaBusy=\{isBusy\}/)
+  assert.match(css, /\.editor-button-spinner \{[^}]*width: 13px; height: 13px;[^}]*border: 2px solid var\(--color-accent\);[^}]*border-radius: 50%;[^}]*animation: editor-button-spin \.7s linear infinite/s)
+  assert.match(css, /\.editor-button-preview\.demo-button\.primary\[aria-busy='true'\] \.editor-button-spinner \{ border-color: currentColor;/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.editor-button-spinner \{ animation: none;/)
+})
+
+test('Design Token reset icons replay once per click and honor reduced motion', () => {
+  const jsx = readFileSync(new URL('../src/features/tokens/TokenStudio.tsx', import.meta.url), 'utf8')
+  const css = readFileSync(new URL('../src/features/tokens/TokenStudio.css', import.meta.url), 'utf8')
+  assert.match(jsx, /setAnimationId\(\(current\) => current \+ 1\)/)
+  assert.match(jsx, /<span key=\{animationId\} className="token-reset-icon"/)
+  assert.equal((jsx.match(/<ResetTokenButton label=/g) ?? []).length, 4)
+  assert.match(css, /animation: token-reset-turn 400ms ease-in-out both/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.token-reset-icon \{ animation: none; \} \}/)
 })
 
 test('Badge appearance and Alert properties round trip and export all formats', () => {
@@ -218,8 +287,8 @@ test('component configuration changes update only their own generated output', (
   settings.button.text = 'A custom button'
   settings.select.options = ['Workspace A']
   settings.select.value = 'Workspace A'
-  settings.slider = { min: -10, max: 50, value: 27, accent: '#4a80d8' }
-  settings.tabs = { labels: ['Overview', ''], activeIndex: 1 }
+  settings.slider = { min: -10, max: 50, value: 27, accent: '#4a80d8', previewState: 'default' }
+  settings.tabs = { labels: ['Overview', ''], activeIndex: 1, previewState: 'default' }
 
   assert.match(generateComponentHtml('button', settings), />A custom button<\/button>/)
   assert.doesNotMatch(generateComponentHtml('button', settings), /Workspace A/)

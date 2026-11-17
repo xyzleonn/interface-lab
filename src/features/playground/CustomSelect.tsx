@@ -13,14 +13,15 @@ type CustomSelectProps<T extends string> = {
   placeholder?: string
   disabled?: boolean
   compact?: boolean
+  previewState?: 'default' | 'hover' | 'focus' | 'open'
 }
 
-export function CustomSelect<T extends string>({ label, options, value, onChange, placeholder = 'Choose an option', disabled = false, compact = false }: CustomSelectProps<T>) {
+export function CustomSelect<T extends string>({ label, options, value, onChange, placeholder = 'Choose an option', disabled = false, compact = false, previewState = 'default' }: CustomSelectProps<T>) {
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const optionRefs = useRef<(HTMLLIElement | null)[]>([])
   const id = useId()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(previewState === 'open')
   const [activeIndex, setActiveIndex] = useState(-1)
   const availableOptions = [...new Map(options.map((option) => [option.value, option])).values()]
   const selectedIndex = availableOptions.findIndex((option) => option.value === value)
@@ -97,7 +98,7 @@ export function CustomSelect<T extends string>({ label, options, value, onChange
   }
 
   return (
-    <div className={`editor-custom-select${compact ? ' is-compact' : ''}`} ref={rootRef} onBlur={(event) => {
+    <div className={`editor-custom-select${compact ? ' is-compact' : ''} state-${previewState}`} ref={rootRef} data-preview-state={previewState} onBlur={(event) => {
       if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) setIsOpen(false)
     }}>
       <span className="editor-custom-select-label" id={`${id}-label`}>{label}</span>

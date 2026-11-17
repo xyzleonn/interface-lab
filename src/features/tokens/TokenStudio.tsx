@@ -11,12 +11,25 @@ import { loadTokenPresets, saveTokenPresets } from './tokenStorage'
 import type { DesignTokens, TokenPreset } from './tokenTypes'
 import './TokenStudio.css'
 
+function ResetTokenButton({ label, onReset }: { label: string; onReset: () => void }) {
+  const [animationId, setAnimationId] = useState(0)
+
+  return (
+    <button className="token-reset-button" type="button" aria-label={`Reset ${label}`} onClick={() => {
+      setAnimationId((current) => current + 1)
+      onReset()
+    }}>
+      <span key={animationId} className="token-reset-icon" aria-hidden="true">↺</span>
+    </button>
+  )
+}
+
 function TokenColorField({ label, value, onChange, onReset }: { label: string; value: string; onChange: (value: string) => void; onReset: () => void }) {
   return (
     <div className="token-color-field">
       <span className="token-color-label">{label}</span>
       <ColorPickerField label={label} value={value} onChange={onChange} className="token-color-control" showLabel={false} />
-      <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
+      <ResetTokenButton label={label} onReset={onReset} />
     </div>
   )
 }
@@ -26,7 +39,7 @@ function TokenNumberField({ label, value, min, max, step = 1, unit = 'px', disab
     <label className="token-number-field">
       <span>{label}<output>{value}{unit}</output></span>
       <RangeSlider min={min} max={max} step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} aria-label={label} />
-      <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
+      <ResetTokenButton label={label} onReset={onReset} />
     </label>
   )
 }
@@ -237,8 +250,8 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
 
         <TokenSection number="02" title="Typography" description="Tune type scale, weight, and rhythm.">
           <div className="token-font-fields">
-            <div className="token-font-field-row"><FontPicker label="Body font stack" value={tokens.typography.fontBody} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontBody) => updateFontStack('body', fontBody)} onSelectFont={(font) => selectFont('body', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><button type="button" aria-label="Reset Body font stack" onClick={() => updateFontStack('body', defaultDesignTokens.typography.fontBody)}>↺</button></div>
-            <div className="token-font-field-row"><FontPicker label="Display font stack" value={tokens.typography.fontDisplay} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontDisplay) => updateFontStack('display', fontDisplay)} onSelectFont={(font) => selectFont('display', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><button type="button" aria-label="Reset Display font stack" onClick={() => updateFontStack('display', defaultDesignTokens.typography.fontDisplay)}>↺</button></div>
+            <div className="token-font-field-row"><FontPicker label="Body font stack" value={tokens.typography.fontBody} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontBody) => updateFontStack('body', fontBody)} onSelectFont={(font) => selectFont('body', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><ResetTokenButton label="Body font stack" onReset={() => updateFontStack('body', defaultDesignTokens.typography.fontBody)} /></div>
+            <div className="token-font-field-row"><FontPicker label="Display font stack" value={tokens.typography.fontDisplay} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontDisplay) => updateFontStack('display', fontDisplay)} onSelectFont={(font) => selectFont('display', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><ResetTokenButton label="Display font stack" onReset={() => updateFontStack('display', defaultDesignTokens.typography.fontDisplay)} /></div>
           </div>
           {effectiveFontNotice && <p className="token-font-notice" role="status">{effectiveFontNotice}</p>}
           <div className="token-range-grid">

@@ -39,6 +39,13 @@ export type TooltipSettings = {
   placement: 'top' | 'right' | 'bottom' | 'left'
 }
 
+export type ButtonPreviewState = 'default' | 'hover' | 'focus' | 'active' | 'disabled' | 'loading'
+export type InputPreviewState = 'default' | 'hover' | 'focus' | 'error'
+export type TogglePreviewState = 'default' | 'hover' | 'focus' | 'disabled'
+export type SliderPreviewState = 'default' | 'hover' | 'focus' | 'active' | 'disabled'
+export type SelectPreviewState = 'default' | 'hover' | 'focus' | 'open'
+export type TabsPreviewState = 'default' | 'hover' | 'focus' | 'disabled'
+
 export type TabsSettings = {
   labels: string[]
   contents: string[]
@@ -46,17 +53,17 @@ export type TabsSettings = {
 }
 
 export type EditorSettings = {
-  button: { variant: ButtonVariant; size: 'small' | 'medium' | 'large'; radius: number; padding: number; fontSize: number; text: string }
+  button: { variant: ButtonVariant; size: 'small' | 'medium' | 'large'; radius: number; padding: number; fontSize: number; text: string; previewState: ButtonPreviewState }
   card: { radius: number; padding: number; shadow: number; borderVisible: boolean }
-  input: { placeholder: string; radius: number; size: 'small' | 'medium' | 'large'; disabled: boolean }
-  toggle: { size: number; accent: string; defaultOn: boolean }
-  slider: { min: number; max: number; value: number; accent: string }
+  input: { placeholder: string; radius: number; size: 'small' | 'medium' | 'large'; disabled: boolean; previewState: InputPreviewState }
+  toggle: { size: number; accent: string; defaultOn: boolean; previewState: TogglePreviewState }
+  slider: { min: number; max: number; value: number; accent: string; previewState: SliderPreviewState }
   badge: BadgeSettings
   alert: AlertSettings
-  select: SelectSettings
+  select: SelectSettings & { previewState: SelectPreviewState }
   modal: ModalSettings
   tooltip: TooltipSettings
-  tabs: TabsSettings
+  tabs: TabsSettings & { previewState: TabsPreviewState }
 }
 
 export type ComponentPreset = {

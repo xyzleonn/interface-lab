@@ -33,17 +33,17 @@ const componentMarks: Record<ComponentKind, string> = {
 
 function createInitialSettings(accent: string): EditorSettings {
   return {
-    button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project' },
+    button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project', previewState: 'default' },
     card: { radius: 16, padding: 26, shadow: 34, borderVisible: true },
-    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false },
-    toggle: { size: 22, accent, defaultOn: true },
-    slider: { min: 0, max: 100, value: 64, accent },
+    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
+    toggle: { size: 22, accent, defaultOn: true, previewState: 'default' },
+    slider: { min: 0, max: 100, value: 64, accent, previewState: 'default' },
     badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
     alert: { variant: 'info', title: 'A new update is ready', description: 'Explore the latest improvements to your workspace.', dismissible: true },
-    select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal', 'Experiments'], value: 'Interface Lab', disabled: false },
+    select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal', 'Experiments'], value: 'Interface Lab', disabled: false, previewState: 'default' },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space for a short decision or a little more detail.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context, right when you need it.', placement: 'top' },
-    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0 },
+    tabs: { labels: ['Overview', 'Activity', 'Settings'], contents: ['A clear view of your workspace.', 'Recent changes and activity.', 'Preferences for your creative space.'], activeIndex: 0, previewState: 'default' },
   }
 }
 
@@ -225,7 +225,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   function renderPreview() {
     if (selected === 'button') {
       const button = settings.button
-      return <DemoButton variant={button.variant} className={`editor-button-preview il-button il-button--${button.variant}`} style={getButtonStyle(button)}>{button.text || 'Button'}</DemoButton>
+      const isBusy = button.previewState === 'loading'
+      const isDisabled = button.previewState === 'disabled' || isBusy
+      return <DemoButton variant={button.variant} disabled={isDisabled} ariaBusy={isBusy} previewState={button.previewState} className={`editor-button-preview il-button il-button--${button.variant}`} style={getButtonStyle(button)}>{isBusy && <span className="editor-button-spinner" aria-hidden="true" />}{button.text || 'Button'}</DemoButton>
     }
 
     if (selected === 'card') {
@@ -242,12 +244,12 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'input') {
       const input = settings.input
-      return <input className="editor-input-preview il-input" type="text" aria-label={input.placeholder || 'Text input preview'} placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
+      return <input className="editor-input-preview il-input" type="text" data-preview-state={input.previewState} aria-label={input.placeholder || 'Text input preview'} aria-invalid={input.previewState === 'error'} placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
     }
 
     if (selected === 'toggle') {
       const toggle = settings.toggle
-      return <Toggle label="Preview toggle" checked={toggle.defaultOn} onChange={() => update('toggle', { defaultOn: !toggle.defaultOn })} style={getToggleStyle(toggle)} className="il-toggle" />
+      return <Toggle label="Preview toggle" checked={toggle.defaultOn} disabled={toggle.previewState === 'disabled'} onChange={() => update('toggle', { defaultOn: !toggle.defaultOn })} style={getToggleStyle(toggle)} className="il-toggle" data-preview-state={toggle.previewState} />
     }
 
     if (selected === 'badge') {
@@ -304,9 +306,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const activeLabel = labels[activeIndex]
       const activeTabId = `${tabsId}-tab-${activeIndex}`
       return (
-        <div className="editor-tabs-preview">
+        <div className={`editor-tabs-preview state-${tabs.previewState}`}>
           <div className="editor-tabs-list" role="tablist" aria-label="Preview tabs">
-            {labels.map((label, index) => <button className={index === activeIndex ? 'is-active' : ''} id={`${tabsId}-tab-${index}`} key={`${index}-${label}`} type="button" role="tab" aria-selected={index === activeIndex} aria-controls={`${tabsId}-panel`} tabIndex={index === activeIndex ? 0 : -1} onClick={() => update('tabs', { activeIndex: index })} onKeyDown={(event) => {
+            {labels.map((label, index) => <button className={index === activeIndex ? 'is-active' : ''} id={`${tabsId}-tab-${index}`} key={`${index}-${label}`} type="button" role="tab" disabled={tabs.previewState === 'disabled'} aria-selected={index === activeIndex} aria-controls={`${tabsId}-panel`} tabIndex={index === activeIndex ? 0 : -1} onClick={() => update('tabs', { activeIndex: index })} onKeyDown={(event) => {
               if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
               event.preventDefault()
               const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? labels.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + labels.length) % labels.length
@@ -323,9 +325,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     const slider = settings.slider
     return (
-      <label className="editor-slider-preview il-slider">
+      <label className={`editor-slider-preview il-slider state-${slider.previewState}`}>
         <span><strong>Preview value</strong><output>{slider.value}</output></span>
-        <RangeSlider min={slider.min} max={slider.max} value={slider.value} accentColor={slider.accent} aria-label="Preview value" onChange={(event) => update('slider', { value: Number(event.target.value) })} />
+        <RangeSlider min={slider.min} max={slider.max} value={slider.value} accentColor={slider.accent} aria-label="Preview value" disabled={slider.previewState === 'disabled'} onChange={(event) => update('slider', { value: Number(event.target.value) })} />
         <small><span>{slider.min}</span><span>{slider.max}</span></small>
       </label>
     )
@@ -337,6 +339,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       return <>
         <SelectProperty label="Variant" value={button.variant} options={[{ value: 'primary', label: 'Primary' }, { value: 'secondary', label: 'Secondary' }, { value: 'ghost', label: 'Ghost' }]} onChange={(variant) => update('button', { variant })} />
         <SelectProperty label="Size" value={button.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('button', { size })} />
+        <SelectProperty label="Preview state" value={button.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }, { value: 'loading', label: 'Loading' }]} onChange={(previewState) => update('button', { previewState })} />
         <RangeProperty label="Border radius" value={button.radius} min={0} max={28} unit="px" onChange={(radius) => update('button', { radius })} />
         <RangeProperty label="Horizontal padding" value={button.padding} min={8} max={40} unit="px" onChange={(padding) => update('button', { padding })} />
         <RangeProperty label="Font size" value={button.fontSize} min={10} max={22} unit="px" onChange={(fontSize) => update('button', { fontSize })} />
@@ -358,6 +361,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         <TextProperty label="Placeholder" value={input.placeholder} maxLength={120} onChange={(placeholder) => update('input', { placeholder })} />
         <RangeProperty label="Border radius" value={input.radius} min={0} max={24} unit="px" onChange={(radius) => update('input', { radius })} />
         <SelectProperty label="Input size" value={input.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('input', { size })} />
+        <SelectProperty label="Preview state" value={input.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'error', label: 'Error' }]} onChange={(previewState) => update('input', { previewState })} />
         <BooleanProperty label="Disabled" checked={input.disabled} onChange={(disabled) => update('input', { disabled })} />
       </>
     }
@@ -367,6 +371,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         <RangeProperty label="Switch size" value={toggle.size} min={18} max={34} unit="px" onChange={(size) => update('toggle', { size })} />
         <ColorProperty label="Accent color" value={toggle.accent} onChange={(accent) => update('toggle', { accent })} />
         <BooleanProperty label="Default state" checked={toggle.defaultOn} onChange={(defaultOn) => update('toggle', { defaultOn })} />
+        <SelectProperty label="Preview state" value={toggle.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'disabled', label: 'Disabled' }]} onChange={(previewState) => update('toggle', { previewState })} />
       </>
     }
     if (selected === 'badge') {
@@ -399,6 +404,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         }} />
         <SelectProperty label="Selected option" value={select.value} options={[{ value: '', label: 'Placeholder' }, ...select.options.map((option) => ({ value: option, label: option }))]} placeholder="Placeholder" onChange={(value) => update('select', { value })} />
         <BooleanProperty label="Disabled" checked={select.disabled} onChange={(disabled) => update('select', { disabled })} />
+        <SelectProperty label="Preview state" value={select.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'open', label: 'Open' }]} onChange={(previewState) => update('select', { previewState })} />
       </>
     }
     if (selected === 'modal') {
@@ -431,11 +437,13 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
           update('tabs', { contents })
         }} /></Fragment>)}
         <SelectProperty label="Active tab" value={String(tabs.activeIndex)} options={tabs.labels.map((label, index) => ({ value: String(index), label }))} onChange={(activeIndex) => update('tabs', { activeIndex: Number(activeIndex) })} />
+        <SelectProperty label="Preview state" value={tabs.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'disabled', label: 'Disabled' }]} onChange={(previewState) => update('tabs', { previewState })} />
       </>
     }
 
     const slider = settings.slider
     return <>
+      <SelectProperty label="Preview state" value={slider.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }]} onChange={(previewState) => update('slider', { previewState })} />
       <NumberProperty label="Minimum" value={slider.min} min={-100000} max={slider.max - 1} onChange={(min) => {
         const nextMin = Math.min(min, slider.max - 1)
         update('slider', { min: nextMin, value: Math.min(slider.max, Math.max(nextMin, slider.value)) })

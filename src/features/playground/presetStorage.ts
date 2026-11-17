@@ -1,4 +1,4 @@
-import type { ComponentPreset, EditorSettings } from './editorTypes'
+import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 
 const presetStorageKey = 'interface-lab-component-presets-v1'
 const sizeOptions = ['small', 'medium', 'large']
@@ -6,6 +6,14 @@ const buttonVariants = ['primary', 'secondary', 'ghost']
 const badgeVariants = ['default', 'subtle', 'outlined']
 const badgeColors = ['neutral', 'primary', 'success', 'warning', 'error']
 const tooltipPlacements = ['top', 'right', 'bottom', 'left']
+const previewStates = {
+  button: ['default', 'hover', 'focus', 'active', 'disabled', 'loading'],
+  input: ['default', 'hover', 'focus', 'error'],
+  toggle: ['default', 'hover', 'focus', 'disabled'],
+  slider: ['default', 'hover', 'focus', 'active', 'disabled'],
+  select: ['default', 'hover', 'focus', 'open'],
+  tabs: ['default', 'hover', 'focus', 'disabled'],
+} as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -34,6 +42,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && isBetween(properties.fontSize, 10, 22)
       && typeof properties.text === 'string'
       && properties.text.length <= 160
+      && previewStates.button.includes(properties.previewState as (typeof previewStates.button)[number])
   }
 
   if (component === 'card') {
@@ -49,12 +58,14 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && isBetween(properties.radius, 0, 24)
       && sizeOptions.includes(String(properties.size))
       && typeof properties.disabled === 'boolean'
+      && previewStates.input.includes(properties.previewState as (typeof previewStates.input)[number])
   }
 
   if (component === 'toggle') {
     return isBetween(properties.size, 18, 34)
       && isAccent(properties.accent)
       && typeof properties.defaultOn === 'boolean'
+      && previewStates.toggle.includes(properties.previewState as (typeof previewStates.toggle)[number])
   }
 
   if (component === 'slider') {
@@ -63,6 +74,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && properties.min < properties.max
       && isBetween(properties.value, properties.min, properties.max)
       && isAccent(properties.accent)
+      && previewStates.slider.includes(properties.previewState as (typeof previewStates.slider)[number])
   }
 
   if (component === 'badge') {
@@ -95,6 +107,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && properties.value.length <= 60
       && (properties.value === '' || properties.options.includes(properties.value))
       && typeof properties.disabled === 'boolean'
+      && previewStates.select.includes(properties.previewState as (typeof previewStates.select)[number])
   }
 
   if (component === 'modal') {
@@ -127,6 +140,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && Number.isInteger(properties.activeIndex)
       && properties.activeIndex >= 0
       && properties.activeIndex < properties.labels.length
+      && previewStates.tabs.includes(properties.previewState as (typeof previewStates.tabs)[number])
   }
 
   return false
@@ -157,6 +171,15 @@ export function loadPresets(): ComponentPreset[] {
 }
 
 function migrateLegacyPreset(value: unknown): unknown {
+  if (isRecord(value) && isRecord(value.properties)) {
+    const defaults: Partial<Record<ComponentKind, string>> = {
+      button: 'default', input: 'default', toggle: 'default', slider: 'default', select: 'default', tabs: 'default',
+    }
+    const defaultState = defaults[value.component as ComponentKind]
+    if (defaultState && !('previewState' in value.properties)) {
+      value = { ...value, properties: { ...value.properties, previewState: defaultState } }
+    }
+  }
   if (isRecord(value) && value.component === 'tabs' && isRecord(value.properties)) {
     const properties = value.properties
     if (Array.isArray(properties.labels) && !('contents' in properties)) {

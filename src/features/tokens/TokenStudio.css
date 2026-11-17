@@ -61,6 +61,9 @@
 .token-color-label { overflow: hidden; min-width: 0; color: var(--color-text); font-size: var(--text-label); text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
 .token-color-field > button,.token-text-field > button,.token-number-field > button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-dim); font: inherit; font-size: 17px; cursor: pointer; transition: color var(--transition-fast),background var(--transition-fast); }
 .token-color-field > button:hover,.token-text-field > button:hover,.token-number-field > button:hover { background: var(--color-accent-soft); color: var(--color-accent); }
+.token-reset-icon { display: inline-block; line-height: 1; transform-origin: center; animation: token-reset-turn 400ms ease-in-out both; }
+@keyframes token-reset-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .token-reset-icon { animation: none; } }
 .token-font-fields { display: grid; gap: 11px; margin-bottom: 17px; }
 .token-font-field-row { display: grid; grid-template-columns: minmax(0,1fr) 30px; align-items: end; gap: 7px; min-width: 0; }
 .token-font-field-row > button { display: grid; place-items: center; width: 28px; height: var(--control-height); border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-dim); font: inherit; font-size: 17px; cursor: pointer; transition: color var(--transition-fast),background var(--transition-fast); }
