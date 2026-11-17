@@ -224,7 +224,7 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
 
       <section className="token-export-section">
         <div className="token-export-heading"><div><span className="dashboard-card-label">TAKE YOUR TOKENS WITH YOU</span><h2>Export design tokens</h2></div><button type="button" onClick={copyExport}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div>
-        <div className="token-export-tabs" role="tablist" aria-label="Token export format">{(['css', 'json'] as const).map((format) => <button type="button" role="tab" aria-selected={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} key={format} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format.toUpperCase()}</button>)}</div>
+        <div className="token-export-tabs" role="group" aria-label="Token export format">{(['css', 'json'] as const).map((format) => <button type="button" aria-pressed={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} key={format} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format.toUpperCase()}</button>)}</div>
         <pre><code>{generatedExport}</code></pre>
       </section>
       <footer className="page-footer"><span>INTERFACE LAB <i>·</i> DESIGN TOKEN STUDIO</span><span>DETAILS THAT ADD UP <i>✳</i></span></footer>

@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode, type Ref } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { ColorPickerField } from './components/ui/ColorPickerField'
 import { useCardParallax } from './hooks/useCardParallax'
 import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
 import { TokenStudio } from './features/tokens/TokenStudio'
+import { getAppearancePreviewVariables } from './features/tokens/appearancePreview'
 import { getDesignTokenVariables } from './features/tokens/tokenCss'
 import { loadDesignTokens, saveDesignTokens } from './features/tokens/tokenStorage'
 import type { DesignTokens } from './features/tokens/tokenTypes'
@@ -172,10 +173,9 @@ function Sidebar({ currentPage }: { currentPage: PageId }) {
         <span className="brand-version">BETA</span>
       </a>
 
-      <div className="workspace-switcher">
+      <div className="workspace-identity">
         <span className="workspace-avatar">IL</span>
-        <span className="workspace-copy"><strong>Personal workspace</strong><small>Free plan</small></span>
-        <Icon name="chevron" size={15} />
+        <span className="workspace-copy"><strong>Personal workspace</strong><small>Current workspace</small></span>
       </div>
 
       <nav className="side-nav">
@@ -201,15 +201,68 @@ function Sidebar({ currentPage }: { currentPage: PageId }) {
 
 function PageHeader({ currentPage }: { currentPage: PageId }) {
   const pageLabel = sections.find((section) => section.id === currentPage)?.label ?? 'Settings'
+  const searchId = useId()
+  const searchRootRef = useRef<HTMLDivElement>(null)
+  const searchButtonRef = useRef<HTMLButtonElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const searchablePages = [...sections, { id: 'settings' as const, label: 'Settings', icon: 'settings' as const }]
+  const matches = searchablePages.filter((page) => page.label.toLowerCase().includes(query.trim().toLowerCase()))
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus()
+  }, [searchOpen])
+
+  useEffect(() => {
+    if (!searchOpen) return
+    function dismissOnOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !searchRootRef.current?.contains(event.target)) {
+        setSearchOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('pointerdown', dismissOnOutsidePointer)
+    return () => document.removeEventListener('pointerdown', dismissOnOutsidePointer)
+  }, [searchOpen])
+
+  useEffect(() => {
+    function handleSearchShortcut(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handleSearchShortcut)
+    return () => window.removeEventListener('keydown', handleSearchShortcut)
+  }, [])
+
+  function closeSearch(restoreFocus = false) {
+    setSearchOpen(false)
+    setQuery('')
+    if (restoreFocus) searchButtonRef.current?.focus()
+  }
 
   return (
     <header className="page-header">
       <div className="breadcrumbs"><span>Workspace</span><span className="breadcrumb-divider">/</span><strong>{pageLabel}</strong></div>
       <div className="header-actions">
-        <button className="search-button" type="button" aria-label="Search (visual only)"><Icon name="search" /><span>Search anything...</span><kbd><Icon name="command" size={12} /> K</kbd></button>
+        <div className="header-search" ref={searchRootRef}>
+          <button className="search-button" ref={searchButtonRef} type="button" aria-label="Find a page" aria-expanded={searchOpen} aria-controls={searchId} onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}><Icon name="search" /><span>Find a page...</span><kbd><Icon name="command" size={12} /> K</kbd></button>
+          {searchOpen && <div className="header-search-panel" id={searchId} role="region" aria-label="Page search" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeSearch(true) } }}>
+            <label className="sr-only" htmlFor={`${searchId}-input`}>Find a page</label>
+            <input id={`${searchId}-input`} ref={searchInputRef} type="search" value={query} placeholder="Search workspace pages" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
+              if (event.key === 'Enter' && matches[0]) {
+                window.location.hash = matches[0].id
+                closeSearch(true)
+              }
+            }} />
+            {matches.length > 0 ? <nav aria-label="Matching pages"><ul>{matches.map((page) => <li key={page.id}><a href={`#${page.id}`} aria-current={page.id === currentPage ? 'page' : undefined} onClick={() => closeSearch(true)}><Icon name={page.icon} size={16} /><span>{page.label}</span><Icon name="chevron" size={14} /></a></li>)}</ul></nav> : <p className="header-search-empty" role="status">No pages match “{query.trim()}”.</p>}
+            <div className="header-search-hint"><span>Navigate to a page</span><kbd>ESC</kbd></div>
+          </div>}
+        </div>
         <span className="header-divider" />
         <span className="status-indicator"><i /> All systems calm</span>
-        <button className="header-avatar" type="button" aria-label="Your profile">S</button>
       </div>
     </header>
   )
@@ -250,7 +303,7 @@ function PlaygroundPage({ themeAccent }: { themeAccent: string }) {
   return <VisualComponentEditor themeAccent={themeAccent} />
 }
 
-function ThemeStudioPage({ settings, onChange }: { settings: ThemeSettings; onChange: (settings: ThemeSettings) => void }) {
+function ThemeStudioPage({ settings, tokens, onChange }: { settings: ThemeSettings; tokens: DesignTokens; onChange: (settings: ThemeSettings) => void }) {
   const selectedAccent = settings.accent === 'custom'
     ? { id: 'custom' as const, label: 'Custom', color: settings.customColor }
     : accentOptions.find((option) => option.id === settings.accent) ?? accentOptions[0]
@@ -278,7 +331,7 @@ function ThemeStudioPage({ settings, onChange }: { settings: ThemeSettings; onCh
         <div className="appearance-options">
           {(['dark', 'light'] as const).map((mode) => (
             <button className={`appearance-option ${mode}${settings.mode === mode ? ' is-selected' : ''}`} type="button" key={mode} aria-pressed={settings.mode === mode} onClick={() => onChange({ ...settings, mode })}>
-              <span className={`appearance-preview ${mode}`} aria-hidden="true"><i /><i /><i /><b /></span>
+              <span className={`appearance-preview ${mode}`} aria-hidden="true" style={getAppearancePreviewVariables(tokens, mode) as CSSProperties}><i /><i /><i /><b /></span>
               <span className="appearance-option-copy"><strong>{mode === 'dark' ? 'Dark' : 'Light'}</strong><small>{mode === 'dark' ? 'Easy on the eyes' : 'Clear and airy'}</small></span>
               <span className="selection-mark" aria-hidden="true">✓</span>
             </button>
@@ -540,7 +593,7 @@ function App() {
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} tokens={appliedTokens} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )

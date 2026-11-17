@@ -66,6 +66,17 @@ function safeColor(value: string, fallback: string) {
   return /^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(value) ? value : fallback
 }
 
+export function getSafeTabsLabels(labels: unknown) {
+  const source = Array.isArray(labels) ? labels.slice(0, 6) : []
+  const normalized = source.map((label, index) => typeof label === 'string' && label.trim() ? label.trim() : `Tab ${index + 1}`)
+  return normalized.length >= 2 ? normalized : ['Overview', 'Activity']
+}
+
+function safeTabIndex(value: number, length: number) {
+  const index = Number.isFinite(value) ? Math.trunc(value) : 0
+  return Math.max(0, Math.min(length - 1, index))
+}
+
 function getBadgeCss() {
   return `.il-export-badge { display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid var(--color-border, rgb(228 226 245 / 9%)); border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1; }
 .il-export-badge--small { padding: 7px 10px; font-size: 11px; }
@@ -327,11 +338,10 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
 </div>`
     }
     case 'tabs': {
-      const labels = settings.tabs.labels.slice(0, 6).map((label, index) => label.trim() || `Tab ${index + 1}`)
-      const safeLabels = labels.length >= 2 ? labels : ['Overview', 'Activity']
-      const activeIndex = Math.max(0, Math.min(safeLabels.length - 1, Math.trunc(settings.tabs.activeIndex)))
+      const safeLabels = getSafeTabsLabels(settings.tabs.labels)
+      const activeIndex = safeTabIndex(settings.tabs.activeIndex, safeLabels.length)
       const tabs = safeLabels.map((label, index) => `<button class="il-export-tabs__tab" id="il-export-tab-${index}" type="button" role="tab" aria-selected="${index === activeIndex}" aria-controls="il-export-panel-${index}"${index === activeIndex ? '' : ' tabindex="-1"'}>${escapeHtml(label)}</button>`).join('\n    ')
-      const panels = safeLabels.map((label, index) => `<section class="il-export-tabs__panel" id="il-export-panel-${index}" role="tabpanel" aria-labelledby="il-export-tab-${index}"${index === activeIndex ? '' : ' hidden'}>
+      const panels = safeLabels.map((label, index) => `<section class="il-export-tabs__panel" id="il-export-panel-${index}" role="tabpanel" aria-labelledby="il-export-tab-${index}" tabindex="0"${index === activeIndex ? '' : ' hidden'}>
       <span class="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>${escapeHtml(label)}</h3><p>This panel is showing the ${escapeHtml(label)} view.</p>
     </section>`).join('\n    ')
       return `<!-- JavaScript required to update selected tabs and reveal their associated panels. -->
@@ -576,9 +586,8 @@ export function Tooltip({ triggerText = ${tsxLiteral(tooltip.triggerText)}, cont
     }
     case 'tabs': {
       const tabs = settings.tabs
-      const labels = tabs.labels.slice(0, 6).map((label, index) => label.trim() || `Tab ${index + 1}`)
-      const safeLabels = labels.length >= 2 ? labels : ['Overview', 'Activity']
-      const defaultIndex = Math.max(0, Math.min(safeLabels.length - 1, Math.trunc(tabs.activeIndex)))
+      const safeLabels = getSafeTabsLabels(tabs.labels)
+      const defaultIndex = safeTabIndex(tabs.activeIndex, safeLabels.length)
       return `/* Import the matching CSS export alongside this component. */
 import { useId, useState, type KeyboardEvent } from 'react'
 
@@ -590,9 +599,13 @@ export interface TabsProps {
 
 export function Tabs({ labels = ${JSON.stringify(safeLabels)}, activeIndex, onActiveIndexChange }: TabsProps) {
   const id = useId()
-  const safeTabLabels = labels.length ? labels.slice(0, 6) : ${JSON.stringify(safeLabels)}
+  const inputLabels = labels.slice(0, 6)
+  const safeTabLabels = inputLabels.length >= 2
+    ? inputLabels.map((label, index) => label.trim() || \`Tab \${index + 1}\`)
+    : ${JSON.stringify(safeLabels)}
   const [internalIndex, setInternalIndex] = useState(${defaultIndex})
-  const selectedIndex = Math.max(0, Math.min(safeTabLabels.length - 1, activeIndex ?? internalIndex))
+  const requestedIndex = activeIndex ?? internalIndex
+  const selectedIndex = Number.isFinite(requestedIndex) ? Math.max(0, Math.min(safeTabLabels.length - 1, Math.trunc(requestedIndex))) : 0
 
   function activate(index: number) {
     setInternalIndex(index)
@@ -613,7 +626,7 @@ export function Tabs({ labels = ${JSON.stringify(safeLabels)}, activeIndex, onAc
       <div className="il-export-tabs__list" role="tablist" aria-label="Tabs">
         {safeTabLabels.map((label, index) => <button className="il-export-tabs__tab" id={\`\${id}-tab-\${index}\`} key={\`\${label}-\${index}\`} type="button" role="tab" aria-selected={index === selectedIndex} aria-controls={\`\${id}-tabpanel\`} tabIndex={index === selectedIndex ? 0 : -1} onClick={() => activate(index)} onKeyDown={(event) => handleKeyDown(event,index)}>{label}</button>)}
       </div>
-      <section className="il-export-tabs__panel" id={\`\${id}-tabpanel\`} role="tabpanel" aria-labelledby={\`\${id}-tab-\${selectedIndex}\`}>
+      <section className="il-export-tabs__panel" id={\`\${id}-tabpanel\`} role="tabpanel" aria-labelledby={\`\${id}-tab-\${selectedIndex}\`} tabIndex={0}>
         <span className="il-export-tabs__eyebrow">CURRENT VIEW</span><h3>{activeLabel}</h3><p>This panel is showing the {activeLabel} view.</p>
       </section>
     </div>

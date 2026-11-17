@@ -5,7 +5,7 @@ import { RangeSlider } from '../../components/ui/RangeSlider'
 import { CustomSelect } from './CustomSelect'
 import { CustomSelectPreview } from './CustomSelectPreview'
 import { loadPresets, savePresets } from './presetStorage'
-import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getToggleStyle } from './componentExport'
+import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getSafeTabsLabels, getToggleStyle } from './componentExport'
 import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 import './VisualComponentEditor.css'
 
@@ -133,13 +133,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     }
 
     const properties = selected === 'select'
-      ? {
-          ...settings.select,
-          options: settings.select.options.length > 0 ? [...settings.select.options] : ['Option 1'],
-          value: settings.select.options.includes(settings.select.value) ? settings.select.value : '',
-        }
+      ? { ...settings.select, options: [...settings.select.options] }
       : selected === 'tabs'
-        ? { ...settings.tabs, labels: settings.tabs.labels.map((label, index) => label.trim() || `Tab ${index + 1}`) }
+        ? { ...settings.tabs, labels: [...settings.tabs.labels] }
         : { ...settings[selected] }
     const preset = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -161,7 +157,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
   function loadPreset(preset: ComponentPreset) {
     const restoredProperties = preset.component === 'select'
-      ? { ...preset.properties, options: [...new Set(preset.properties.options)] }
+      ? { ...preset.properties, options: [...preset.properties.options] }
       : preset.component === 'tabs'
         ? { ...preset.properties, labels: [...preset.properties.labels] }
         : { ...preset.properties }
@@ -235,7 +231,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'input') {
       const input = settings.input
-      return <input className="editor-input-preview il-input" type="text" placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
+      return <input className="editor-input-preview il-input" type="text" aria-label={input.placeholder || 'Text input preview'} placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
     }
 
     if (selected === 'toggle') {
@@ -285,20 +281,22 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'tabs') {
       const tabs = settings.tabs
-      const activeLabel = tabs.labels[tabs.activeIndex] ?? tabs.labels[0]
-      const activeTabId = `${tabsId}-tab-${tabs.activeIndex}`
+      const labels = getSafeTabsLabels(tabs.labels)
+      const activeIndex = Math.max(0, Math.min(labels.length - 1, Number.isInteger(tabs.activeIndex) ? tabs.activeIndex : 0))
+      const activeLabel = labels[activeIndex]
+      const activeTabId = `${tabsId}-tab-${activeIndex}`
       return (
         <div className="editor-tabs-preview">
           <div className="editor-tabs-list" role="tablist" aria-label="Preview tabs">
-            {tabs.labels.map((label, index) => <button className={index === tabs.activeIndex ? 'is-active' : ''} id={`${tabsId}-tab-${index}`} key={`${label}-${index}`} type="button" role="tab" aria-selected={index === tabs.activeIndex} aria-controls={`${tabsId}-panel`} tabIndex={index === tabs.activeIndex ? 0 : -1} onClick={() => update('tabs', { activeIndex: index })} onKeyDown={(event) => {
+            {labels.map((label, index) => <button className={index === activeIndex ? 'is-active' : ''} id={`${tabsId}-tab-${index}`} key={`${index}-${label}`} type="button" role="tab" aria-selected={index === activeIndex} aria-controls={`${tabsId}-panel`} tabIndex={index === activeIndex ? 0 : -1} onClick={() => update('tabs', { activeIndex: index })} onKeyDown={(event) => {
               if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
               event.preventDefault()
-              const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.labels.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.labels.length) % tabs.labels.length
+              const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? labels.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + labels.length) % labels.length
               update('tabs', { activeIndex: nextIndex })
               event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]?.focus()
             }}>{label}</button>)}
           </div>
-          <section className="editor-tabs-panel" id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={activeTabId}>
+          <section className="editor-tabs-panel" id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={activeTabId} tabIndex={0}>
             <span className="editor-tabs-kicker">CURRENT VIEW</span><h3>{activeLabel}</h3><p>This panel is showing the {activeLabel} view.</p>
           </section>
         </div>
@@ -449,8 +447,8 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       {showExport && (
         <section className="css-export-panel" aria-labelledby="css-export-title">
           <div className="css-export-heading"><div><span className="dashboard-card-label">COMPONENT EXPORT</span><h2 id="css-export-title">{selectedComponent.label} · {exportFormat === 'tsx' ? 'React / TSX' : exportFormat.toUpperCase()}</h2></div><button type="button" className="copy-css-button" onClick={copyGeneratedCode}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div>
-          <div className="export-format-tabs" role="tablist" aria-label="Export format">
-            {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" role="tab" aria-selected={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
+          <div className="export-format-tabs" role="group" aria-label="Export format">
+            {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" aria-pressed={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
           </div>
           <pre><code>{generatedCode}</code></pre>
           <p>{exportFormat === 'tsx' ? 'The component includes typed props and uses the matching scoped CSS classes from the CSS export.' : exportFormat === 'css' ? 'Scoped styles for this component only. Pair with the generated HTML or React component.' : htmlExportNote}</p>

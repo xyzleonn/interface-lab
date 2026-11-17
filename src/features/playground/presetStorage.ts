@@ -78,7 +78,6 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && typeof properties.placeholder === 'string'
       && properties.placeholder.length <= 100
       && Array.isArray(properties.options)
-      && properties.options.length >= 1
       && properties.options.length <= 10
       && properties.options.every((option) => typeof option === 'string' && option.length > 0 && option.length <= 60)
       && typeof properties.value === 'string'
@@ -109,7 +108,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
     return Array.isArray(properties.labels)
       && properties.labels.length >= 2
       && properties.labels.length <= 6
-      && properties.labels.every((label) => typeof label === 'string' && label.trim().length > 0 && label.length <= 40)
+      && properties.labels.every((label) => typeof label === 'string' && label.length <= 40)
       && isFiniteNumber(properties.activeIndex)
       && Number.isInteger(properties.activeIndex)
       && properties.activeIndex >= 0
