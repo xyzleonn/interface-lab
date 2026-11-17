@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { ComponentKind, EditorSettings } from './editorTypes'
+import type { EditorComponentKind, EditorSettings } from './editorTypes'
 
 export function getButtonStyle(button: EditorSettings['button']): CSSProperties {
   const sizes = { small: 34, medium: 42, large: 50 }
@@ -170,7 +170,7 @@ function getSliderCss(slider: EditorSettings['slider']) {
 .il-slider > small { display: flex; justify-content: space-between; color: var(--color-text-muted, #777885);}`
 }
 
-export function generateComponentCss(component: ComponentKind, settings: EditorSettings) {
+export function generateComponentCss(component: EditorComponentKind, settings: EditorSettings) {
   switch (component) {
     case 'button': return `/* Button text: "${safeComment(settings.button.text)}" */\n${getButtonCss(settings.button)}`
     case 'card': return getCardCss(settings.card)
@@ -180,7 +180,7 @@ export function generateComponentCss(component: ComponentKind, settings: EditorS
   }
 }
 
-export function generateComponentHtml(component: ComponentKind, settings: EditorSettings) {
+export function generateComponentHtml(component: EditorComponentKind, settings: EditorSettings) {
   switch (component) {
     case 'button': {
       const button = settings.button
@@ -203,7 +203,7 @@ function tsxLiteral(value: string) {
   return JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
 }
 
-export function generateComponentTsx(component: ComponentKind, settings: EditorSettings) {
+export function generateComponentTsx(component: EditorComponentKind, settings: EditorSettings) {
   switch (component) {
     case 'button': {
       const button = settings.button

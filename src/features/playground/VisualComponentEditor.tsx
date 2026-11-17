@@ -2,16 +2,24 @@ import { useState, type FormEvent } from 'react'
 import { DemoButton, Toggle } from '../../components/ui/PlaygroundControls'
 import { loadPresets, savePresets } from './presetStorage'
 import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getToggleStyle } from './componentExport'
-import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
+import type { ComponentKind, ComponentPreset, EditorComponentKind, EditorSettings } from './editorTypes'
 import './VisualComponentEditor.css'
 
-const componentOptions: { id: ComponentKind; label: string; description: string; mark: string }[] = [
+const componentOptions: { id: EditorComponentKind; label: string; description: string; mark: string }[] = [
   { id: 'button', label: 'Button', description: 'Actions and links', mark: '↗' },
   { id: 'card', label: 'Card', description: 'Content surfaces', mark: '▱' },
   { id: 'input', label: 'Input field', description: 'Text entry', mark: 'Aa' },
   { id: 'toggle', label: 'Toggle', description: 'On or off states', mark: '◉' },
   { id: 'slider', label: 'Slider', description: 'Adjustable values', mark: '⌁' },
 ]
+const componentNames: Record<ComponentKind, string> = {
+  button: 'Button', card: 'Card', input: 'Input field', toggle: 'Toggle', slider: 'Slider',
+  badge: 'Badge', select: 'Select', modal: 'Modal', tooltip: 'Tooltip', tabs: 'Tabs',
+}
+const componentMarks: Record<ComponentKind, string> = {
+  button: '↗', card: '▱', input: 'Aa', toggle: '◉', slider: '⌁',
+  badge: '●', select: '⌄', modal: '▢', tooltip: '?', tabs: 'Ⅱ',
+}
 
 function createInitialSettings(accent: string): EditorSettings {
   return {
@@ -20,6 +28,11 @@ function createInitialSettings(accent: string): EditorSettings {
     input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false },
     toggle: { size: 22, accent, defaultOn: true },
     slider: { min: 0, max: 100, value: 64, accent },
+    badge: { text: 'New', variant: 'accent', size: 'medium', showDot: true },
+    select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal', 'Experiments'], value: 'Interface Lab', disabled: false },
+    modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space for a short decision or a little more detail.', size: 'medium' },
+    tooltip: { triggerText: 'Hover or focus me', content: 'A little context, right when you need it.', placement: 'top' },
+    tabs: { labels: ['Overview', 'Activity', 'Settings'], activeIndex: 0 },
   }
 }
 
@@ -71,7 +84,7 @@ function ColorProperty({ label, value, onChange }: { label: string; value: strin
 }
 
 export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) {
-  const [selected, setSelected] = useState<ComponentKind>('button')
+  const [selected, setSelected] = useState<EditorComponentKind>('button')
   const [settings, setSettings] = useState<EditorSettings>(() => createInitialSettings(themeAccent))
   const [inputValue, setInputValue] = useState('')
   const [presets, setPresets] = useState<ComponentPreset[]>(loadPresets)
@@ -119,10 +132,18 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   }
 
   function loadPreset(preset: ComponentPreset) {
-    setSelected(preset.component)
-    setSettings((current) => ({ ...current, [preset.component]: { ...preset.properties } }) as EditorSettings)
+    const isCurrentlyEditable = componentOptions.some((component) => component.id === preset.component)
+    const restoredProperties = preset.component === 'select'
+      ? { ...preset.properties, options: [...preset.properties.options] }
+      : preset.component === 'tabs'
+        ? { ...preset.properties, labels: [...preset.properties.labels] }
+        : { ...preset.properties }
+    if (isCurrentlyEditable) setSelected(preset.component as EditorComponentKind)
+    setSettings((current) => ({ ...current, [preset.component]: restoredProperties }) as EditorSettings)
     setInputValue('')
-    setNotice(`Loaded “${preset.name}”.`)
+    setNotice(isCurrentlyEditable
+      ? `Loaded “${preset.name}”.`
+      : `Restored “${preset.name}” settings. Its preview and controls will be added in the next phase.`)
   }
 
   function deletePreset(preset: ComponentPreset) {
@@ -308,10 +329,10 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         {presets.length > 0 ? (
           <div className="saved-presets-grid">
             {presets.map((preset) => {
-              const component = componentOptions.find((option) => option.id === preset.component) ?? componentOptions[0]
+              const component = componentOptions.find((option) => option.id === preset.component)
               return (
                 <article className="saved-preset-card" key={preset.id}>
-                  <div className="preset-card-top"><span className="component-choice-mark">{component.mark}</span><span className="preset-type">{component.label}</span><button type="button" className="delete-preset-button" aria-label={`Delete ${preset.name}`} onClick={() => deletePreset(preset)}>×</button></div>
+                  <div className="preset-card-top"><span className="component-choice-mark">{component?.mark ?? componentMarks[preset.component]}</span><span className="preset-type">{componentNames[preset.component]}</span><button type="button" className="delete-preset-button" aria-label={`Delete ${preset.name}`} onClick={() => deletePreset(preset)}>×</button></div>
                   <h3>{preset.name}</h3>
                   <small>Saved {new Date(preset.savedAt).toLocaleDateString()}</small>
                   <button type="button" className="load-preset-button" onClick={() => loadPreset(preset)}>Load preset <span>↗</span></button>

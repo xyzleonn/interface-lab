@@ -56,10 +56,12 @@
 .token-section-heading p { margin: 5px 0 0; color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: var(--line-height-body); }
 .token-color-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .token-color-field { position: relative; display: grid; grid-template-columns: minmax(0,1fr) 34px 78px 30px; align-items: center; gap: 7px; min-width: 0; padding: 8px; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: rgb(255 255 255 / 2%); }
-.token-color-field > label { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--color-text); font-size: var(--font-size-xs); text-transform: capitalize; }
-.token-color-field > label span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.token-color-swatch { width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 6px; }
-.token-color-field input[type='color'] { width: 32px; height: 30px; padding: 3px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); cursor: pointer; }
+.token-color-label { overflow: hidden; min-width: 0; color: var(--color-text); font-size: var(--font-size-xs); text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
+.token-color-picker { position: relative; display: block; width: 32px; height: 30px; overflow: hidden; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); cursor: pointer; transition: border-color var(--transition-fast),box-shadow var(--transition-fast); }
+.token-color-picker:hover { border-color: var(--color-accent-border); }
+.token-color-picker:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.token-color-swatch { position: absolute; inset: 3px; border: 1px solid rgb(255 255 255 / 18%); border-radius: 4px; pointer-events: none; }
+.token-color-picker input[type='color'] { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
 .token-color-field input:not([type='color']) { width: 100%; min-width: 0; height: 30px; padding: 0 6px; border: 1px solid var(--color-border); border-radius: 5px; outline: none; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 11px; text-transform: uppercase; }
 .token-color-field input.is-invalid { border-color: var(--color-error); }
 .token-color-field > button,.token-text-field > button,.token-number-field > button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-dim); font: inherit; font-size: 17px; cursor: pointer; transition: color var(--transition-fast),background var(--transition-fast); }

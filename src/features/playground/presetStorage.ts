@@ -3,6 +3,8 @@ import type { ComponentPreset, EditorSettings } from './editorTypes'
 const presetStorageKey = 'interface-lab-component-presets-v1'
 const sizeOptions = ['small', 'medium', 'large']
 const buttonVariants = ['primary', 'secondary', 'ghost']
+const badgeVariants = ['neutral', 'accent', 'success', 'warning', 'error']
+const tooltipPlacements = ['top', 'right', 'bottom', 'left']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -60,6 +62,58 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
       && properties.min < properties.max
       && isBetween(properties.value, properties.min, properties.max)
       && isAccent(properties.accent)
+  }
+
+  if (component === 'badge') {
+    return typeof properties.text === 'string'
+      && properties.text.length <= 120
+      && badgeVariants.includes(String(properties.variant))
+      && ['small', 'medium'].includes(String(properties.size))
+      && typeof properties.showDot === 'boolean'
+  }
+
+  if (component === 'select') {
+    return typeof properties.label === 'string'
+      && properties.label.length <= 80
+      && typeof properties.placeholder === 'string'
+      && properties.placeholder.length <= 100
+      && Array.isArray(properties.options)
+      && properties.options.length >= 1
+      && properties.options.length <= 10
+      && properties.options.every((option) => typeof option === 'string' && option.length > 0 && option.length <= 60)
+      && typeof properties.value === 'string'
+      && properties.value.length <= 60
+      && (properties.value === '' || properties.options.includes(properties.value))
+      && typeof properties.disabled === 'boolean'
+  }
+
+  if (component === 'modal') {
+    return typeof properties.triggerText === 'string'
+      && properties.triggerText.length <= 80
+      && typeof properties.title === 'string'
+      && properties.title.length <= 120
+      && typeof properties.description === 'string'
+      && properties.description.length <= 500
+      && ['small', 'medium', 'large'].includes(String(properties.size))
+  }
+
+  if (component === 'tooltip') {
+    return typeof properties.triggerText === 'string'
+      && properties.triggerText.length <= 80
+      && typeof properties.content === 'string'
+      && properties.content.length <= 240
+      && tooltipPlacements.includes(String(properties.placement))
+  }
+
+  if (component === 'tabs') {
+    return Array.isArray(properties.labels)
+      && properties.labels.length >= 2
+      && properties.labels.length <= 6
+      && properties.labels.every((label) => typeof label === 'string' && label.trim().length > 0 && label.length <= 40)
+      && isFiniteNumber(properties.activeIndex)
+      && Number.isInteger(properties.activeIndex)
+      && properties.activeIndex >= 0
+      && properties.activeIndex < properties.labels.length
   }
 
   return false

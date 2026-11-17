@@ -19,8 +19,11 @@ function TokenColorField({ label, value, onChange, onReset }: { label: string; v
 
   return (
     <div className="token-color-field">
-      <label><span className="token-color-swatch" style={{ backgroundColor: value }} /><span>{label}</span></label>
-      <input aria-label={`${label} color picker`} type="color" value={value} onInput={(event) => updatePickerColor(event.currentTarget.value)} onChange={(event) => updatePickerColor(event.currentTarget.value)} />
+      <span className="token-color-label">{label}</span>
+      <label className="token-color-picker">
+        <span className="token-color-swatch" aria-hidden="true" style={{ backgroundColor: value }} />
+        <input aria-label={`${label} color picker`} type="color" value={value} onInput={(event) => updatePickerColor(event.currentTarget.value)} onChange={(event) => updatePickerColor(event.currentTarget.value)} />
+      </label>
       <input aria-label={`${label} HEX value`} aria-invalid={invalid} className={invalid ? 'is-invalid' : ''} value={hexValue} maxLength={7} spellCheck={false} onChange={(event) => setHexDraft({ source: value, text: event.currentTarget.value })} onBlur={(event) => {
         const normalized = normalizeTokenHex(event.currentTarget.value)
         setHexStatus({ source: value, invalid: !normalized })
