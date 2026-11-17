@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useCardParallax } from './hooks/useCardParallax'
+import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
 import './App.css'
 
 type IconName = 'grid' | 'sparkles' | 'shapes' | 'settings' | 'search' | 'command' | 'chevron'
@@ -33,7 +34,6 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 type PageId = 'overview' | 'theme-studio' | 'playground' | 'settings'
-type ButtonVariant = 'primary' | 'secondary' | 'ghost'
 type ThemeMode = 'dark' | 'light'
 type AccentId = 'lavender' | 'ocean' | 'mint' | 'rose' | 'amber' | 'custom'
 type ThemeSettings = { mode: ThemeMode; accent: AccentId; customColor: string }
@@ -213,100 +213,21 @@ function PageHeader({ currentPage }: { currentPage: PageId }) {
 }
 
 function DashboardCard({ className = '', children }: { className?: string; children: ReactNode }) {
-  const parallax = useCardParallax<HTMLElement>()
+  const { ref, onPointerMove, onPointerLeave } = useCardParallax<HTMLElement>()
   return (
     <article
-      ref={parallax.ref}
+      ref={ref}
       className={`dashboard-card ${className}`}
-      onPointerMove={parallax.onPointerMove}
-      onPointerLeave={parallax.onPointerLeave}
+      onPointerMove={(event) => onPointerMove(event)}
+      onPointerLeave={() => onPointerLeave()}
     >
       {children}
     </article>
   )
 }
 
-function DemoButton({ variant, disabled = false, children }: { variant: ButtonVariant; disabled?: boolean; children: ReactNode }) {
-  return <button className={`demo-button ${variant}`} type="button" disabled={disabled}>{children}</button>
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
-  return (
-    <button className={`toggle${checked ? ' is-on' : ''}`} type="button" role="switch" aria-checked={checked} aria-label={label} onClick={onChange}>
-      <span />
-    </button>
-  )
-}
-
-function PlaygroundPage() {
-  const [notificationsOn, setNotificationsOn] = useState(true)
-  const [animationsOn, setAnimationsOn] = useState(false)
-  const [intensity, setIntensity] = useState(64)
-  const [textValue, setTextValue] = useState('Make something thoughtful')
-  const [searchValue, setSearchValue] = useState('')
-
-  return (
-    <div className="playground-page">
-      <section className="playground-intro">
-        <div className="eyebrow"><span className="eyebrow-dot" /> COMPONENT PLAYGROUND</div>
-        <div className="playground-heading-row">
-          <div><h1>Little things,<br /><span>made tangible.</span></h1><p>Try the controls, change the values, and see how each piece responds.</p></div>
-          <div className="playground-badge"><span /> LIVE PREVIEW</div>
-        </div>
-      </section>
-
-      <div className="playground-sections">
-        <section className="playground-section button-section" aria-labelledby="buttons-title">
-          <div className="section-heading"><div><span className="section-index">01</span><h2 id="buttons-title">Buttons</h2></div><p>Three familiar ways to invite an action.</p></div>
-          <div className="button-showcase">
-            <div className="button-sample"><DemoButton variant="primary">Create something <span>↗</span></DemoButton><small>Primary</small></div>
-            <div className="button-sample"><DemoButton variant="secondary">Take a closer look</DemoButton><small>Secondary</small></div>
-            <div className="button-sample"><DemoButton variant="ghost">Maybe later</DemoButton><small>Ghost</small></div>
-            <div className="button-sample"><DemoButton variant="primary" disabled>Unavailable</DemoButton><small>Disabled</small></div>
-          </div>
-        </section>
-
-        <div className="playground-two-col">
-          <section className="playground-section" aria-labelledby="toggles-title">
-            <div className="section-heading"><div><span className="section-index">02</span><h2 id="toggles-title">Toggles</h2></div><p>Small switches, immediate feedback.</p></div>
-            <div className="control-list">
-              <div className="control-row"><span><strong>Gentle notifications</strong><small>Only the useful things</small></span><Toggle label="Gentle notifications" checked={notificationsOn} onChange={() => setNotificationsOn((value) => !value)} /></div>
-              <div className="control-row"><span><strong>Motion details</strong><small>A little movement in the UI</small></span><Toggle label="Motion details" checked={animationsOn} onChange={() => setAnimationsOn((value) => !value)} /></div>
-            </div>
-          </section>
-
-          <section className="playground-section" aria-labelledby="sliders-title">
-            <div className="section-heading"><div><span className="section-index">03</span><h2 id="sliders-title">Sliders</h2></div><p>Adjust a value and watch it update.</p></div>
-            <label className="slider-control" htmlFor="intensity-slider">
-              <span className="slider-label"><strong>Accent intensity</strong><output htmlFor="intensity-slider">{intensity}%</output></span>
-              <input id="intensity-slider" type="range" min="0" max="100" value={intensity} style={{ '--range-progress': `${intensity}%` } as CSSProperties} onChange={(event) => setIntensity(Number(event.target.value))} />
-              <span className="range-labels"><span>Subtle</span><span>Vivid</span></span>
-            </label>
-          </section>
-        </div>
-
-        <section className="playground-section" aria-labelledby="inputs-title">
-          <div className="section-heading"><div><span className="section-index">04</span><h2 id="inputs-title">Inputs</h2></div><p>Text fields with a few different moods.</p></div>
-          <div className="input-showcase">
-            <label className="field-demo"><span>Text input <small>DEFAULT</small></span><input type="text" value={textValue} onChange={(event) => setTextValue(event.target.value)} placeholder="Write a little something..." /><small className="field-hint">Your words stay right here.</small></label>
-            <label className="field-demo"><span>Search <small>TYPE TO FILTER</small></span><div className="input-with-icon"><Icon name="search" /><input type="search" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search components..." /></div><small className="field-hint">{searchValue ? `Looking for “${searchValue}”` : 'A quiet place to start looking.'}</small></label>
-            <label className="field-demo"><span>Validation states <small>ERROR / SUCCESS</small></span><input className="field-error" type="text" defaultValue="not-an-email" aria-invalid="true" /><small className="field-hint error-hint">That address needs another look.</small></label>
-            <label className="field-demo"><span>Looks good <small>CONFIRMED</small></span><input className="field-success" type="text" defaultValue="hello@interfacelab.dev" /><small className="field-hint success-hint">All set, thank you.</small></label>
-          </div>
-        </section>
-
-        <section className="playground-section" aria-labelledby="cards-title">
-          <div className="section-heading"><div><span className="section-index">05</span><h2 id="cards-title">Cards</h2></div><p>Containers for content, each with its own tone.</p></div>
-          <div className="card-showcase">
-            <article className="sample-card surface-card"><div className="sample-card-top"><span className="sample-icon violet-sample"><Icon name="sparkles" /></span><span className="sample-tag">SOFT SURFACE</span></div><h3>A little breathing room</h3><p>A quiet surface for ideas that deserve a moment to land.</p><a href="#playground">Explore this card <span>↗</span></a></article>
-            <article className="sample-card outlined-card"><div className="sample-card-top"><span className="sample-icon mint-sample"><Icon name="shapes" /></span><span className="sample-tag">OUTLINED</span></div><h3>Clear by design</h3><p>A lighter frame puts the focus on what you want to say.</p><a href="#playground">Explore this card <span>↗</span></a></article>
-            <article className="sample-card glow-card"><div className="sample-card-top"><span className="sample-icon amber-sample">✳</span><span className="sample-tag">A LITTLE GLOW</span></div><h3>Stand out softly</h3><p>A hint of color adds warmth without raising its voice.</p><a href="#playground">Explore this card <span>↗</span></a></article>
-          </div>
-        </section>
-      </div>
-      <footer className="page-footer"><span>INTERFACE LAB <i>·</i> COMPONENT PLAYGROUND</span><span>TRY THINGS OUT <i>✳</i></span></footer>
-    </div>
-  )
+function PlaygroundPage({ themeAccent }: { themeAccent: string }) {
+  return <VisualComponentEditor themeAccent={themeAccent} />
 }
 
 function ThemeStudioPage({ settings, onChange }: { settings: ThemeSettings; onChange: (settings: ThemeSettings) => void }) {
@@ -544,12 +465,16 @@ function App() {
     updateThemeSettings({ mode: 'dark', accent: 'lavender', customColor: defaultAccent })
   }
 
+  const editorAccent = themeSettings.accent === 'custom'
+    ? themeSettings.customColor
+    : accentOptions.find((option) => option.id === themeSettings.accent)?.color ?? defaultAccent
+
   return (
     <div className="app-shell">
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : <SettingsPage settings={themeSettings} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : <SettingsPage settings={themeSettings} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )
