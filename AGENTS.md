@@ -1,33 +1,36 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Project Structure
 
-This repository is a small React 19 and TypeScript application built with Vite. Application code and styles live in `src/`: `main.tsx` mounts the app, `App.tsx` contains the primary interface, and `App.css` / `index.css` hold component and global styles. Put imported images and other bundled assets in `src/assets/`; files served directly should go in `public/`. Keep UI code close to the components that use it.
+- `src/App.tsx` and `src/App.css` contain application orchestration, page-level UI, and shared shell styles.
+- `src/features/playground/` contains the component editor, typed component settings, preset storage, custom selects, exports, and editor styles.
+- `src/features/tokens/` contains Design Token Studio, font catalog and picker, custom font storage, token types, persistence, and CSS/export helpers.
+- `src/components/ui/` holds shared controls; `src/hooks/` and `src/utils/` hold reusable behavior and pure helpers.
+- `src/index.css` defines global styles and semantic CSS variables. `public/` contains static assets and self-hosted font files. `tests/` contains Node.js tests.
 
-## Build, Test, and Development Commands
+## Architecture and State
 
-Use the package scripts from the repository root:
+Use React function components and strict TypeScript types. Follow the existing two-space indentation, ES module conventions, `PascalCase` for components, and `camelCase` for functions and values. Keep feature logic in its existing feature folder; share controls from `src/components/ui/` instead of duplicating them. `App.tsx` owns application-level theme, preference, token draft, and page state. Playground component properties use the discriminated models in `editorTypes.ts`; presets use `presetStorage.ts`. Keep draft tokens isolated from applied root CSS variables until the explicit apply action.
 
-- `npm install` installs dependencies from `package-lock.json`.
-- `npm run dev` starts the Vite development server with hot reload.
-- `npm run build` runs TypeScript project checks and creates the production bundle in `dist/`.
-- `npm run preview` serves the built bundle locally for a production-style review.
-- `npm run lint` runs Oxlint using `.oxlintrc.json`.
+Persist small settings and preset data through the existing storage helpers. Custom font binaries belong in IndexedDB, never `localStorage`. Handle storage failures through the existing user-facing feedback patterns.
 
-There is currently no dedicated test script or test framework configured.
+## Styling
 
-## Coding Style & Naming Conventions
+Use plain CSS and the existing semantic variables for color, typography, spacing, radius, and motion. Prefer the shared tokens over new literals. Keep feature styles in their feature stylesheet, use descriptive kebab-case class names, and respect reduced-motion behavior. Preserve dark/light theme compatibility and responsive container-query patterns.
 
-Write UI in TypeScript and React function components. Follow the existing two-space indentation and the repository's TypeScript/ES module conventions. Use `PascalCase` for component names and component files, `camelCase` for variables and functions, and descriptive kebab-case class names in CSS. Keep styles in the existing CSS files unless a component-specific stylesheet improves organization. Run `npm run lint` and `npm run build` before submitting changes.
+## Commands and Testing
 
-## Testing Guidelines
+Use Node.js 20.19.x or later in the 20.x line, or 22.12+ (`^20.19.0 || >=22.12.0`, per Vite 8). The project declares no independent npm version constraint. Run commands from the repository root:
 
-No automated tests are configured yet. For UI changes, run the lint and build commands, then check the affected screen with `npm run dev` in a browser. If adding tests, first introduce a test framework and script, and name test files after the covered module (for example, `App.test.tsx`).
+- `npm ci` installs the lockfile dependencies.
+- `npm run dev` starts Vite.
+- `npm test` runs `tests/*.test.mjs` with Node's built-in test runner and TypeScript stripping.
+- `npm run lint` runs Oxlint.
+- `npm run build` runs TypeScript project checks, then creates `dist/` with Vite.
+- `npm run preview` serves the production build locally.
 
-## Commit & Pull Request Guidelines
+Add focused regression tests for pure logic and export/persistence helpers. A successful build does not replace browser checks for UI behavior.
 
-The repository has no commit history yet, so no established commit message convention can be inferred. Use short, imperative commit subjects (for example, `Add responsive navigation`). Pull requests should explain the user-visible change, note validation commands and results, and include screenshots for visual changes. Link a related issue when one exists.
+## Commits and Pull Requests
 
-## Configuration
-
-Keep environment-specific values and secrets out of source control. Review `.gitignore` before adding generated output or local configuration files.
+Recent commits use Conventional Commit-style subjects such as `feat(playground): ...`. Keep commits scoped. Pull requests should explain the user-visible change, list test/lint/build results, link an issue when applicable, and include screenshots for visual changes when available.
