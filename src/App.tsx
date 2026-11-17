@@ -1,13 +1,19 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { useCardParallax } from './hooks/useCardParallax'
 import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
+import { TokenStudio } from './features/tokens/TokenStudio'
+import { getDesignTokenVariables } from './features/tokens/tokenCss'
+import { loadDesignTokens, saveDesignTokens } from './features/tokens/tokenStorage'
+import type { DesignTokens } from './features/tokens/tokenTypes'
+import { normalizeDesignTokens } from './features/tokens/tokenDefaults'
 import './App.css'
 
-type IconName = 'grid' | 'sparkles' | 'shapes' | 'settings' | 'search' | 'command' | 'chevron'
+type IconName = 'grid' | 'sparkles' | 'tokens' | 'shapes' | 'settings' | 'search' | 'command' | 'chevron'
 
 const iconPaths: Record<IconName, string> = {
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   sparkles: 'm12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3ZM19 14l1.1 2.9L23 18l-2.9 1.1L19 22l-1.1-2.9L15 18l2.9-1.1L19 14Z',
+  tokens: 'M4 5h16M4 12h16M4 19h16M8 3v4m8 3v4m-5 3v4',
   shapes: 'M12 3 21 8l-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',
   settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64',
   search: 'm20 20-4.4-4.4M18 10.5a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z',
@@ -33,7 +39,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   )
 }
 
-type PageId = 'overview' | 'theme-studio' | 'playground' | 'settings'
+type PageId = 'overview' | 'theme-studio' | 'token-studio' | 'playground' | 'settings'
 type ThemeMode = 'dark' | 'light'
 type AccentId = 'lavender' | 'ocean' | 'mint' | 'rose' | 'amber' | 'custom'
 type ThemeSettings = { mode: ThemeMode; accent: AccentId; customColor: string }
@@ -135,6 +141,12 @@ function getAccentLabel(settings: ThemeSettings) {
   return accentOptions.find((option) => option.id === settings.accent)?.label ?? 'Lavender'
 }
 
+function getAccentColor(settings: ThemeSettings) {
+  return settings.accent === 'custom'
+    ? settings.customColor
+    : accentOptions.find((option) => option.id === settings.accent)?.color ?? defaultAccent
+}
+
 function getGreeting() {
   const hour = new Date().getHours()
   if (hour < 12) return 'Good morning'
@@ -145,6 +157,7 @@ function getGreeting() {
 const sections: { id: PageId; label: string; icon: IconName }[] = [
   { id: 'overview', label: 'Overview', icon: 'grid' },
   { id: 'theme-studio', label: 'Theme studio', icon: 'sparkles' },
+  { id: 'token-studio', label: 'Design tokens', icon: 'tokens' },
   { id: 'playground', label: 'Playground', icon: 'shapes' },
 ]
 
@@ -412,6 +425,9 @@ function App() {
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(loadThemeSettings)
   const [themeActivity, setThemeActivity] = useState<ThemeActivity[]>([])
   const [preferences, setPreferences] = useState<ApplicationPreferences>(loadPreferences)
+  const [appliedTokens, setAppliedTokens] = useState<DesignTokens>(loadDesignTokens)
+  const [draftTokens, setDraftTokens] = useState<DesignTokens>(() => normalizeDesignTokens(appliedTokens))
+  const [draftAccentColor, setDraftAccentColor] = useState(() => getAccentColor(themeSettings))
 
   useEffect(() => {
     const syncPageWithUrl = () => setCurrentPage(getCurrentPage())
@@ -436,6 +452,21 @@ function App() {
       // The selected theme still works for this session if storage is blocked.
     }
   }, [themeSettings])
+
+  useEffect(() => {
+    const root = document.documentElement
+    const accentColor = themeSettings.accent === 'custom'
+      ? themeSettings.customColor
+      : accentOptions.find((option) => option.id === themeSettings.accent)?.color ?? defaultAccent
+    const accent = deriveAccent(accentColor)
+    Object.entries(getDesignTokenVariables(appliedTokens, themeSettings.mode, accent.color)).forEach(([name, value]) => root.style.setProperty(name, value))
+    root.style.setProperty('--color-accent-hover', accent.hover)
+    root.style.setProperty('--color-accent-soft', accent.soft)
+    root.style.setProperty('--color-accent-border', accent.border)
+    root.style.setProperty('--color-accent-glow', accent.glow)
+    root.style.setProperty('--color-accent-contrast', accent.contrast)
+    saveDesignTokens(appliedTokens)
+  }, [appliedTokens, themeSettings.accent, themeSettings.customColor, themeSettings.mode])
 
   useEffect(() => {
     const root = document.documentElement
@@ -465,6 +496,7 @@ function App() {
       updates.push({ kind: 'accent', title: 'Updated accent color', detail: `${getAccentLabel(themeSettings)} → ${getAccentLabel(next)}` })
     }
     setThemeSettings(next)
+    if (draftAccentColor === getAccentColor(themeSettings)) setDraftAccentColor(getAccentColor(next))
     setThemeActivity((activity) => [
       ...updates.map((update, index) => ({ ...update, id: now.getTime() + index, time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) })),
       ...activity,
@@ -475,6 +507,28 @@ function App() {
     setPreferences((current) => ({ ...current, ...updates }))
   }
 
+  function applyTokenDraft() {
+    const appliedTokens = normalizeDesignTokens(draftTokens)
+    const matchingAccent = accentOptions.find((option) => option.color.toLowerCase() === draftAccentColor.toLowerCase())
+    setAppliedTokens(appliedTokens)
+    setDraftTokens(normalizeDesignTokens(appliedTokens))
+    updateThemeSettings({
+      ...themeSettings,
+      accent: matchingAccent?.id ?? 'custom',
+      customColor: draftAccentColor,
+    })
+  }
+
+  function discardTokenDraft() {
+    setDraftTokens(normalizeDesignTokens(appliedTokens))
+    setDraftAccentColor(getAccentColor(themeSettings))
+  }
+
+  function resetTokenDraft() {
+    setDraftTokens(normalizeDesignTokens(null))
+    setDraftAccentColor(defaultAccent)
+  }
+
   function resetPreferences() {
     const confirmed = window.confirm('Reset all preferences to their defaults? This will also restore the dark theme and lavender accent.')
     if (!confirmed) return
@@ -482,16 +536,16 @@ function App() {
     updateThemeSettings({ mode: 'dark', accent: 'lavender', customColor: defaultAccent })
   }
 
-  const editorAccent = themeSettings.accent === 'custom'
-    ? themeSettings.customColor
-    : accentOptions.find((option) => option.id === themeSettings.accent)?.color ?? defaultAccent
+  const editorAccent = getAccentColor(themeSettings)
+  const hasTokenDraftChanges = JSON.stringify(draftTokens) !== JSON.stringify(appliedTokens)
+    || draftAccentColor.toLowerCase() !== editorAccent.toLowerCase()
 
   return (
     <div className="app-shell">
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : <SettingsPage settings={themeSettings} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )
