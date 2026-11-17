@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { useCardParallax } from './hooks/useCardParallax'
 import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
 import './App.css'
@@ -212,12 +212,29 @@ function PageHeader({ currentPage }: { currentPage: PageId }) {
   )
 }
 
-function DashboardCard({ className = '', children }: { className?: string; children: ReactNode }) {
+function DashboardCard({ className = '', children, href, ariaLabel }: { className?: string; children: ReactNode; href?: string; ariaLabel?: string }) {
   const { ref, onPointerMove, onPointerLeave } = useCardParallax<HTMLElement>()
+  const cardClassName = `dashboard-card ${className}${href ? ' dashboard-card--link' : ''}`
+
+  if (href) {
+    return (
+      <a
+        ref={ref as Ref<HTMLAnchorElement>}
+        href={href}
+        aria-label={ariaLabel}
+        className={cardClassName}
+        onPointerMove={(event) => onPointerMove(event)}
+        onPointerLeave={() => onPointerLeave()}
+      >
+        {children}
+      </a>
+    )
+  }
+
   return (
     <article
       ref={ref}
-      className={`dashboard-card ${className}`}
+      className={cardClassName}
       onPointerMove={(event) => onPointerMove(event)}
       onPointerLeave={() => onPointerLeave()}
     >
@@ -499,22 +516,22 @@ function OverviewPage({ settings, activity }: { settings: ThemeSettings; activit
       </section>
 
       <section className="dashboard-grid" aria-label="Your workspace">
-        <DashboardCard className="quick-card theme-quick-card">
+        <DashboardCard className="quick-card theme-quick-card" href="#theme-studio" ariaLabel="Open Theme Studio">
           <div className="dashboard-card-top"><span className="dashboard-card-icon theme-card-icon"><Icon name="sparkles" /></span><span className="dashboard-card-label">MAKE IT YOURS</span><span className="dashboard-card-arrow"><Icon name="chevron" size={15} /></span></div>
           <div className="quick-card-art theme-art" aria-hidden="true"><span /><span /><span /><i /></div>
           <h2>Theme Studio</h2><p>Find the colors and atmosphere that feel like you.</p>
-          <a className="dashboard-card-link" href="#theme-studio">Explore themes <span>↗</span></a>
+          <span className="dashboard-card-link">Explore themes <span>↗</span></span>
         </DashboardCard>
 
-        <DashboardCard className="quick-card playground-quick-card">
+        <DashboardCard className="quick-card playground-quick-card" href="#playground" ariaLabel="Open Component Playground">
           <div className="dashboard-card-top"><span className="dashboard-card-icon playground-card-icon"><Icon name="shapes" /></span><span className="dashboard-card-label">PLAY, THEN POLISH</span><span className="dashboard-card-arrow"><Icon name="chevron" size={15} /></span></div>
           <div className="quick-card-art playground-art" aria-hidden="true"><span>Aa</span><i /><b /><em /></div>
           <h2>Component Playground</h2><p>Try buttons, toggles, and little interface details.</p>
-          <a className="dashboard-card-link" href="#playground">Open playground <span>↗</span></a>
+          <span className="dashboard-card-link">Open playground <span>↗</span></span>
         </DashboardCard>
 
-        <DashboardCard className="theme-overview-card">
-          <div className="dashboard-card-top"><span className="dashboard-card-label">CURRENT THEME</span><a className="mini-link" href="#theme-studio">Edit <span>↗</span></a></div>
+        <DashboardCard className="theme-overview-card" href="#theme-studio" ariaLabel="Open Theme Studio to edit the current theme">
+          <div className="dashboard-card-top"><span className="dashboard-card-label">CURRENT THEME</span><span className="mini-link">Edit <span>↗</span></span></div>
           <div className="current-theme-display"><span className="theme-color-orb" style={{ backgroundColor: accent }} /><div><strong>{settings.mode === 'dark' ? 'Dark mode' : 'Light mode'}</strong><small>{getAccentLabel(settings)}</small></div></div>
           <div className="theme-card-divider" />
           <div className="theme-attributes"><span><i className="mode-indicator" /> Appearance</span><strong>{settings.mode}</strong></div>

@@ -27,14 +27,16 @@ export function Toggle({
   onChange,
   label,
   style,
+  className = '',
 }: {
   checked: boolean
   onChange: () => void
   label: string
   style?: CSSProperties
+  className?: string
 }) {
   return (
-    <button className={`toggle${checked ? ' is-on' : ''}`} type="button" role="switch" aria-checked={checked} aria-label={label} onClick={onChange} style={style}>
+    <button className={`toggle${checked ? ' is-on' : ''} ${className}`} type="button" role="switch" aria-checked={checked} aria-label={label} onClick={onChange} style={style}>
       <span />
     </button>
   )

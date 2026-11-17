@@ -1,15 +1,9 @@
-import { useState, type CSSProperties } from 'react'
-import { DemoButton, Toggle, type ButtonVariant } from '../../components/ui/PlaygroundControls'
+import { useState, type FormEvent } from 'react'
+import { DemoButton, Toggle } from '../../components/ui/PlaygroundControls'
+import { loadPresets, savePresets } from './presetStorage'
+import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getToggleStyle } from './componentExport'
+import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 import './VisualComponentEditor.css'
-
-type ComponentKind = 'button' | 'card' | 'input' | 'toggle' | 'slider'
-type EditorSettings = {
-  button: { variant: ButtonVariant; size: 'small' | 'medium' | 'large'; radius: number; padding: number; fontSize: number; text: string }
-  card: { radius: number; padding: number; shadow: number; borderVisible: boolean }
-  input: { placeholder: string; radius: number; size: 'small' | 'medium' | 'large'; disabled: boolean }
-  toggle: { size: number; accent: string; defaultOn: boolean }
-  slider: { min: number; max: number; value: number; accent: string }
-}
 
 const componentOptions: { id: ComponentKind; label: string; description: string; mark: string }[] = [
   { id: 'button', label: 'Button', description: 'Actions and links', mark: '↗' },
@@ -38,11 +32,11 @@ function RangeProperty({ label, value, min, max, unit = '', onChange }: { label:
   )
 }
 
-function TextProperty({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+function TextProperty({ label, value, onChange, placeholder, maxLength }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; maxLength?: number }) {
   return (
     <label className="editor-property text-property">
       <span>{label}</span>
-      <input type="text" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      <input type="text" value={value} placeholder={placeholder} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
 }
@@ -80,29 +74,88 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   const [selected, setSelected] = useState<ComponentKind>('button')
   const [settings, setSettings] = useState<EditorSettings>(() => createInitialSettings(themeAccent))
   const [inputValue, setInputValue] = useState('')
+  const [presets, setPresets] = useState<ComponentPreset[]>(loadPresets)
+  const [showPresetForm, setShowPresetForm] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [showExport, setShowExport] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'tsx' | 'css' | 'html'>('tsx')
+  const [notice, setNotice] = useState('')
+  const [copyNotice, setCopyNotice] = useState('')
+
+  const generatedCode = exportFormat === 'tsx'
+    ? generateComponentTsx(selected, settings)
+    : exportFormat === 'html'
+      ? generateComponentHtml(selected, settings)
+      : generateComponentCss(selected, settings)
 
   function update<K extends ComponentKind>(component: K, updates: Partial<EditorSettings[K]>) {
     setSettings((current) => ({ ...current, [component]: { ...current[component], ...updates } }))
   }
 
+  function saveCurrentPreset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = presetName.trim()
+    if (!name) {
+      setNotice('Give this preset a name before saving.')
+      return
+    }
+
+    const preset = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.slice(0, 60),
+      savedAt: Date.now(),
+      component: selected,
+      properties: { ...settings[selected] },
+    } as ComponentPreset
+    const nextPresets = [preset, ...presets]
+    if (!savePresets(nextPresets)) {
+      setNotice('Could not save presets in this browser.')
+      return
+    }
+    setPresets(nextPresets)
+    setPresetName('')
+    setShowPresetForm(false)
+    setNotice(`Saved “${preset.name}”.`)
+  }
+
+  function loadPreset(preset: ComponentPreset) {
+    setSelected(preset.component)
+    setSettings((current) => ({ ...current, [preset.component]: { ...preset.properties } }) as EditorSettings)
+    setInputValue('')
+    setNotice(`Loaded “${preset.name}”.`)
+  }
+
+  function deletePreset(preset: ComponentPreset) {
+    const nextPresets = presets.filter((savedPreset) => savedPreset.id !== preset.id)
+    if (!savePresets(nextPresets)) {
+      setNotice('Could not update presets in this browser.')
+      return
+    }
+    setPresets(nextPresets)
+    setNotice(`Deleted “${preset.name}”.`)
+  }
+
+  async function copyGeneratedCode() {
+    try {
+      await navigator.clipboard.writeText(generatedCode)
+      setCopyNotice('Copied to clipboard')
+      window.setTimeout(() => setCopyNotice(''), 1800)
+    } catch {
+      setCopyNotice('Clipboard access is unavailable here')
+      window.setTimeout(() => setCopyNotice(''), 2500)
+    }
+  }
+
   function renderPreview() {
     if (selected === 'button') {
       const button = settings.button
-      const sizes = { small: 34, medium: 42, large: 50 }
-      const style: CSSProperties = {
-        minHeight: sizes[button.size],
-        borderRadius: button.radius,
-        paddingInline: button.padding,
-        fontSize: button.fontSize,
-      }
-      return <DemoButton variant={button.variant} className="editor-button-preview" style={style}>{button.text || 'Button'}</DemoButton>
+      return <DemoButton variant={button.variant} className={`editor-button-preview il-button il-button--${button.variant}`} style={getButtonStyle(button)}>{button.text || 'Button'}</DemoButton>
     }
 
     if (selected === 'card') {
       const card = settings.card
-      const shadow = card.shadow / 100
       return (
-        <article className="editor-card-preview" style={{ borderRadius: card.radius, padding: card.padding, borderColor: card.borderVisible ? undefined : 'transparent', boxShadow: `0 18px 50px rgb(0 0 0 / ${shadow * 0.36}), 0 4px 12px rgb(0 0 0 / ${shadow * 0.18})` }}>
+        <article className="editor-card-preview il-card" style={getCardStyle(card)}>
           <span className="editor-card-eyebrow">A SMALL MOMENT</span>
           <h3>Room for a good idea.</h3>
           <p>A simple card can make a little space for something worth noticing.</p>
@@ -113,26 +166,17 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'input') {
       const input = settings.input
-      const size = { small: 36, medium: 44, large: 52 }
-      return <input className="editor-input-preview" type="text" placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={{ borderRadius: input.radius, height: size[input.size] }} />
+      return <input className="editor-input-preview il-input" type="text" placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
     }
 
     if (selected === 'toggle') {
       const toggle = settings.toggle
-      const diameter = Math.max(14, toggle.size - 6)
-      const toggleStyle = {
-        '--toggle-width': `${toggle.size * 1.8}px`,
-        '--toggle-height': `${toggle.size}px`,
-        '--toggle-thumb-size': `${diameter}px`,
-        '--toggle-travel': `${toggle.size * 0.8}px`,
-        '--toggle-accent': toggle.accent,
-      } as CSSProperties
-      return <Toggle label="Preview toggle" checked={toggle.defaultOn} onChange={() => update('toggle', { defaultOn: !toggle.defaultOn })} style={toggleStyle} />
+      return <Toggle label="Preview toggle" checked={toggle.defaultOn} onChange={() => update('toggle', { defaultOn: !toggle.defaultOn })} style={getToggleStyle(toggle)} className="il-toggle" />
     }
 
     const slider = settings.slider
     return (
-      <label className="editor-slider-preview">
+      <label className="editor-slider-preview il-slider">
         <span><strong>Preview value</strong><output>{slider.value}</output></span>
         <input type="range" min={slider.min} max={slider.max} value={slider.value} style={{ accentColor: slider.accent }} onChange={(event) => update('slider', { value: Number(event.target.value) })} />
         <small><span>{slider.min}</span><span>{slider.max}</span></small>
@@ -149,7 +193,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         <RangeProperty label="Border radius" value={button.radius} min={0} max={28} unit="px" onChange={(radius) => update('button', { radius })} />
         <RangeProperty label="Horizontal padding" value={button.padding} min={8} max={40} unit="px" onChange={(padding) => update('button', { padding })} />
         <RangeProperty label="Font size" value={button.fontSize} min={10} max={22} unit="px" onChange={(fontSize) => update('button', { fontSize })} />
-        <TextProperty label="Button text" value={button.text} onChange={(text) => update('button', { text })} />
+        <TextProperty label="Button text" value={button.text} maxLength={160} onChange={(text) => update('button', { text })} />
       </>
     }
     if (selected === 'card') {
@@ -164,7 +208,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     if (selected === 'input') {
       const input = settings.input
       return <>
-        <TextProperty label="Placeholder" value={input.placeholder} onChange={(placeholder) => update('input', { placeholder })} />
+        <TextProperty label="Placeholder" value={input.placeholder} maxLength={120} onChange={(placeholder) => update('input', { placeholder })} />
         <RangeProperty label="Border radius" value={input.radius} min={0} max={24} unit="px" onChange={(radius) => update('input', { radius })} />
         <SelectProperty label="Input size" value={input.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('input', { size })} />
         <BooleanProperty label="Disabled" checked={input.disabled} onChange={(disabled) => update('input', { disabled })} />
@@ -200,8 +244,37 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     <div className="visual-editor">
       <section className="visual-editor-intro">
         <div className="eyebrow"><span className="eyebrow-dot" /> COMPONENT PLAYGROUND</div>
-        <div className="visual-editor-title-row"><div><h1>Shape the <span>details.</span></h1><p>Choose a component, adjust its properties, and see what feels right.</p></div><span className="editor-live-badge"><i /> LIVE PREVIEW</span></div>
+        <div className="visual-editor-title-row">
+          <div><h1>Shape the <span>details.</span></h1><p>Choose a component, adjust its properties, and see what feels right.</p></div>
+          <div className="editor-action-group">
+            <button className="editor-action-button save-action" type="button" onClick={() => { setShowPresetForm((open) => !open); setNotice('') }}>＋ Save preset</button>
+            <button className={`editor-action-button export-action${showExport ? ' is-active' : ''}`} type="button" onClick={() => { setShowExport((open) => !open); setCopyNotice('') }}>{showExport ? 'Hide export' : '{ } Export code'}</button>
+            <span className="editor-live-badge"><i /> LIVE PREVIEW</span>
+          </div>
+        </div>
       </section>
+
+      {showPresetForm && (
+        <form className="editor-save-form" onSubmit={saveCurrentPreset}>
+          <div><strong>Save this {selectedComponent.label.toLowerCase()} setup</strong><small>Its properties will be saved separately from your current editor state.</small></div>
+          <label className="sr-only" htmlFor="preset-name">Preset name</label>
+          <input id="preset-name" autoFocus maxLength={60} placeholder="e.g. Soft lavender button" value={presetName} onChange={(event) => setPresetName(event.target.value)} />
+          <button className="editor-form-save" type="submit">Save preset</button>
+          <button className="editor-form-cancel" type="button" onClick={() => setShowPresetForm(false)}>Cancel</button>
+        </form>
+      )}
+      {notice && <p className="editor-notice" role="status">{notice}</p>}
+
+      {showExport && (
+        <section className="css-export-panel" aria-labelledby="css-export-title">
+          <div className="css-export-heading"><div><span className="dashboard-card-label">COMPONENT EXPORT</span><h2 id="css-export-title">{selectedComponent.label} · {exportFormat === 'tsx' ? 'React / TSX' : exportFormat.toUpperCase()}</h2></div><button type="button" className="copy-css-button" onClick={copyGeneratedCode}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div>
+          <div className="export-format-tabs" role="tablist" aria-label="Export format">
+            {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" role="tab" aria-selected={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
+          </div>
+          <pre><code>{generatedCode}</code></pre>
+          <p>{exportFormat === 'tsx' ? 'The component includes typed props and uses the matching scoped CSS classes from the CSS export.' : exportFormat === 'css' ? 'Scoped styles for this component only. Pair with the generated HTML or React component.' : 'Static accessible markup. Toggle and slider interactions require JavaScript to update their values.'}</p>
+        </section>
+      )}
 
       <div className="editor-workspace">
         <nav className="editor-selector" aria-label="Choose a component">
@@ -229,16 +302,40 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
           <div className="inspector-footnote"><span>◈</span> Preview updates instantly</div>
         </aside>
       </div>
+
+      <section className="saved-presets-section" aria-labelledby="saved-presets-title">
+        <div className="saved-presets-heading"><div><span className="dashboard-card-label">YOUR COMPONENT LIBRARY</span><h2 id="saved-presets-title">Saved presets <small>{presets.length.toString().padStart(2, '0')}</small></h2></div><p>Reusable starting points for future experiments.</p></div>
+        {presets.length > 0 ? (
+          <div className="saved-presets-grid">
+            {presets.map((preset) => {
+              const component = componentOptions.find((option) => option.id === preset.component) ?? componentOptions[0]
+              return (
+                <article className="saved-preset-card" key={preset.id}>
+                  <div className="preset-card-top"><span className="component-choice-mark">{component.mark}</span><span className="preset-type">{component.label}</span><button type="button" className="delete-preset-button" aria-label={`Delete ${preset.name}`} onClick={() => deletePreset(preset)}>×</button></div>
+                  <h3>{preset.name}</h3>
+                  <small>Saved {new Date(preset.savedAt).toLocaleDateString()}</small>
+                  <button type="button" className="load-preset-button" onClick={() => loadPreset(preset)}>Load preset <span>↗</span></button>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="presets-empty"><span>▱</span><p>Your saved component setups will appear here.</p><button type="button" onClick={() => { setShowPresetForm(true); setNotice('') }}>Save the current {selectedComponent.label.toLowerCase()}</button></div>
+        )}
+      </section>
       <footer className="page-footer"><span>INTERFACE LAB <i>·</i> VISUAL COMPONENT EDITOR</span><span>MAKE IT FEEL RIGHT <i>✳</i></span></footer>
     </div>
   )
 }
 
-function NumberProperty({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function NumberProperty({ label, value, onChange, min = -100000, max = 100000 }: { label: string; value: number; onChange: (value: number) => void; min?: number; max?: number }) {
   return (
     <label className="editor-property number-property">
       <span>{label}</span>
-      <input type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <input type="number" min={min} max={max} step={1} value={value} onChange={(event) => {
+        const parsed = Number(event.target.value)
+        if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
+      }} />
     </label>
   )
 }
