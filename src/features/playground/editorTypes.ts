@@ -5,7 +5,7 @@ export type ComponentKind = EditorComponentKind | 'badge' | 'alert' | 'select' |
 
 export type BadgeSettings = {
   text: string
-  variant: 'default' | 'subtle' | 'outlined'
+  variant: 'solid' | 'soft' | 'outline'
   color: 'neutral' | 'primary' | 'success' | 'warning' | 'error'
   size: 'small' | 'medium' | 'large'
   showDot: boolean
@@ -13,6 +13,7 @@ export type BadgeSettings = {
 
 export type AlertSettings = {
   variant: 'info' | 'success' | 'warning' | 'error'
+  size: 'small' | 'medium' | 'large'
   title: string
   description: string
   dismissible: boolean
@@ -54,8 +55,8 @@ export type TabsSettings = {
 
 export type EditorSettings = {
   button: { variant: ButtonVariant; size: 'small' | 'medium' | 'large'; radius: number; padding: number; fontSize: number; text: string; previewState: ButtonPreviewState }
-  card: { radius: number; padding: number; shadow: number; borderVisible: boolean }
-  input: { placeholder: string; radius: number; size: 'small' | 'medium' | 'large'; disabled: boolean; previewState: InputPreviewState }
+  card: { variant: 'default' | 'elevated' | 'outlined' | 'interactive'; size: 'small' | 'medium' | 'large'; radius: number; padding: number; shadow: number; borderVisible: boolean }
+  input: { placeholder: string; variant: 'filled' | 'outlined' | 'underlined'; radius: number; size: 'small' | 'medium' | 'large'; disabled: boolean; previewState: InputPreviewState }
   toggle: { size: number; accent: string; defaultOn: boolean; previewState: TogglePreviewState }
   slider: { min: number; max: number; value: number; accent: string; previewState: SliderPreviewState }
   badge: BadgeSettings

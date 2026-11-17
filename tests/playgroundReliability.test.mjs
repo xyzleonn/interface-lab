@@ -24,12 +24,12 @@ const exportClasses = {
 function createSettings() {
   return {
     button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project', previewState: 'default' },
-    card: { radius: 16, padding: 26, shadow: 34, borderVisible: true },
-    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
+    card: { variant: 'default', size: 'medium', radius: 16, padding: 26, shadow: 34, borderVisible: true },
+    input: { placeholder: 'Your email address', variant: 'outlined', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
     toggle: { size: 22, accent: '#a997f5', defaultOn: true, previewState: 'default' },
     slider: { min: 0, max: 100, value: 64, accent: '#a997f5', previewState: 'default' },
-    badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
-    alert: { variant: 'info', title: 'Heads up', description: 'New features are ready.', dismissible: true },
+    badge: { text: 'New', variant: 'soft', color: 'primary', size: 'medium', showDot: true },
+    alert: { variant: 'info', size: 'medium', title: 'Heads up', description: 'New features are ready.', dismissible: true },
     select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal'], value: 'Interface Lab', disabled: false, previewState: 'default' },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context.', placement: 'top' },
@@ -86,7 +86,7 @@ test('legacy Badge presets migrate semantic variants and preserve appearance', (
 
   const [preset] = loadPresets()
   assert.equal(preset.component, 'badge')
-  assert.deepEqual(preset.properties, { text: 'Ready', variant: 'default', color: 'primary', size: 'medium', showDot: true })
+  assert.deepEqual(preset.properties, { text: 'Ready', variant: 'solid', color: 'primary', size: 'medium', showDot: true })
 })
 
 test('legacy Tabs presets receive compatible default panel content', () => {
@@ -168,8 +168,8 @@ test('Design Token reset icons replay once per click and honor reduced motion', 
 
 test('Badge appearance and Alert properties round trip and export all formats', () => {
   const settings = createSettings()
-  settings.badge = { text: 'Ready', variant: 'outlined', color: 'warning', size: 'large', showDot: false }
-  settings.alert = { variant: 'error', title: 'Careful <now>', description: 'Use & check "details".', dismissible: true }
+  settings.badge = { text: 'Ready', variant: 'outline', color: 'warning', size: 'large', showDot: false }
+  settings.alert = { variant: 'error', size: 'small', title: 'Careful <now>', description: 'Use & check "details".', dismissible: true }
   const presets = [
     { id: 'new-badge', name: 'Outlined warning', savedAt: Date.now(), component: 'badge', properties: settings.badge },
     { id: 'alert', name: 'Error alert', savedAt: Date.now(), component: 'alert', properties: settings.alert },
@@ -187,13 +187,64 @@ test('Badge appearance and Alert properties round trip and export all formats', 
     assert.match(tsx, /export interface/)
   }
 
-  assert.match(generateComponentHtml('badge', settings), /il-export-badge--outlined il-export-badge--warning il-export-badge--large/)
+  assert.match(generateComponentHtml('badge', settings), /il-export-badge--outline il-export-badge--warning il-export-badge--large/)
   assert.doesNotMatch(generateComponentHtml('alert', settings), /Careful <now>/)
   assert.match(generateComponentHtml('alert', settings), /Careful &lt;now&gt;/)
   assert.match(generateComponentHtml('alert', settings), /role="alert" aria-live="assertive"/)
   assert.match(generateComponentCss('alert', settings), /--color-error/)
   assert.match(generateComponentTsx('badge', settings), /export type BadgeColor = 'neutral' \| 'primary' \| 'success' \| 'warning' \| 'error'/)
   assert.match(generateComponentTsx('alert', settings), /onDismiss\?: \(\) => void/)
+})
+
+test('component variants and semantic sizes persist and appear in every export format', () => {
+  const settings = createSettings()
+  settings.button = { ...settings.button, variant: 'danger', size: 'large' }
+  settings.card = { ...settings.card, variant: 'interactive', size: 'small' }
+  settings.input = { ...settings.input, variant: 'underlined', size: 'large' }
+  settings.badge = { ...settings.badge, variant: 'solid', size: 'small' }
+  settings.alert = { ...settings.alert, variant: 'warning', size: 'large' }
+  const presetRecords = ['button', 'card', 'input', 'badge', 'alert'].map((component) => ({
+    id: component, name: `${component} variant`, savedAt: Date.now(), component, properties: settings[component],
+  }))
+  assert.equal(savePresets(presetRecords), true)
+  assert.deepEqual(loadPresets().map(({ properties }) => properties), presetRecords.map(({ properties }) => properties))
+
+  const expectedClasses = {
+    button: ['il-export-button--danger'],
+    card: ['il-export-card--interactive', 'il-export-card--small'],
+    input: ['il-export-input--underlined'],
+    badge: ['il-export-badge--solid', 'il-export-badge--small'],
+    alert: ['il-export-alert--warning', 'il-export-alert--large'],
+  }
+  for (const [component, classes] of Object.entries(expectedClasses)) {
+    const html = generateComponentHtml(component, settings)
+    const css = generateComponentCss(component, settings)
+    const tsx = generateComponentTsx(component, settings)
+    for (const className of classes) {
+      assert.ok(html.includes(className), `${component} HTML is missing ${className}`)
+      assert.ok(css.includes(className), `${component} CSS is missing ${className}`)
+    }
+    assert.match(tsx, /className=/, `${component} TSX is missing a className`)
+  }
+  assert.match(generateComponentCss('button', settings), /--color-error/)
+  assert.match(generateComponentCss('card', settings), /interactive:hover/)
+  assert.match(generateComponentCss('input', settings), /underlined/)
+})
+
+test('older Card, Input, Alert and Badge presets receive compatible new defaults', () => {
+  const settings = createSettings()
+  const legacy = [
+    { id: 'card', name: 'Old card', savedAt: Date.now(), component: 'card', properties: { radius: 16, padding: 26, shadow: 34, borderVisible: true } },
+    { id: 'input', name: 'Old input', savedAt: Date.now(), component: 'input', properties: { placeholder: 'Email', radius: 9, size: 'medium', disabled: false, previewState: 'default' } },
+    { id: 'alert', name: 'Old alert', savedAt: Date.now(), component: 'alert', properties: { variant: 'info', title: '', description: 'Hello', dismissible: false } },
+    { id: 'badge', name: 'Old soft badge', savedAt: Date.now(), component: 'badge', properties: { ...settings.badge, variant: 'subtle' } },
+  ]
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify(legacy))
+  const restored = loadPresets()
+  assert.deepEqual(restored.map(({ properties }) => properties.variant), ['default', 'outlined', 'info', 'soft'])
+  assert.equal(restored[0].properties.size, 'medium')
+  assert.equal(restored[1].properties.variant, 'outlined')
+  assert.equal(restored[2].properties.size, 'medium')
 })
 
 test('HTML exports escape user-provided text and attributes', () => {

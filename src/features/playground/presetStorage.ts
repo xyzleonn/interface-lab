@@ -2,8 +2,10 @@ import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTyp
 
 const presetStorageKey = 'interface-lab-component-presets-v1'
 const sizeOptions = ['small', 'medium', 'large']
-const buttonVariants = ['primary', 'secondary', 'ghost']
-const badgeVariants = ['default', 'subtle', 'outlined']
+const buttonVariants = ['primary', 'secondary', 'outline', 'ghost', 'danger']
+const badgeVariants = ['solid', 'soft', 'outline']
+const cardVariants = ['default', 'elevated', 'outlined', 'interactive']
+const inputVariants = ['filled', 'outlined', 'underlined']
 const badgeColors = ['neutral', 'primary', 'success', 'warning', 'error']
 const tooltipPlacements = ['top', 'right', 'bottom', 'left']
 const previewStates = {
@@ -46,7 +48,9 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
   }
 
   if (component === 'card') {
-    return isBetween(properties.radius, 0, 36)
+    return cardVariants.includes(String(properties.variant))
+      && sizeOptions.includes(String(properties.size))
+      && isBetween(properties.radius, 0, 36)
       && isBetween(properties.padding, 12, 48)
       && isBetween(properties.shadow, 0, 100)
       && typeof properties.borderVisible === 'boolean'
@@ -55,6 +59,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
   if (component === 'input') {
     return typeof properties.placeholder === 'string'
       && properties.placeholder.length <= 120
+      && inputVariants.includes(String(properties.variant))
       && isBetween(properties.radius, 0, 24)
       && sizeOptions.includes(String(properties.size))
       && typeof properties.disabled === 'boolean'
@@ -88,6 +93,7 @@ function isProperties(component: unknown, properties: unknown): properties is Ed
 
   if (component === 'alert') {
     return ['info', 'success', 'warning', 'error'].includes(String(properties.variant))
+      && sizeOptions.includes(String(properties.size))
       && typeof properties.title === 'string'
       && properties.title.length <= 120
       && typeof properties.description === 'string'
@@ -172,6 +178,21 @@ export function loadPresets(): ComponentPreset[] {
 
 function migrateLegacyPreset(value: unknown): unknown {
   if (isRecord(value) && isRecord(value.properties)) {
+    const properties = value.properties
+    if (value.component === 'card') {
+      value = { ...value, properties: { variant: 'default', size: 'medium', ...properties } }
+    } else if (value.component === 'input') {
+      value = { ...value, properties: { variant: 'outlined', ...properties } }
+    } else if (value.component === 'alert') {
+      value = { ...value, properties: { size: 'medium', ...properties } }
+    } else if (value.component === 'badge') {
+      const variant = properties.variant === 'default' ? 'solid'
+        : properties.variant === 'subtle' ? 'soft'
+          : properties.variant === 'outlined' ? 'outline' : properties.variant
+      value = { ...value, properties: { ...properties, variant } }
+    }
+  }
+  if (isRecord(value) && isRecord(value.properties)) {
     const defaults: Partial<Record<ComponentKind, string>> = {
       button: 'default', input: 'default', toggle: 'default', slider: 'default', select: 'default', tabs: 'default',
     }
@@ -200,7 +221,7 @@ function migrateLegacyPreset(value: unknown): unknown {
     ...value,
     properties: {
       ...properties,
-      variant: 'default',
+      variant: 'solid',
       color,
       size: ['small', 'medium'].includes(String(properties.size)) ? properties.size : 'medium',
     },

@@ -112,6 +112,10 @@ h1 span { background: linear-gradient(105deg,var(--color-accent-heading-start),v
 .demo-button:active:not(:disabled) { transform: translateY(0) scale(.97); }
 .demo-button.primary span { margin-left: 7px; }
 .demo-button.secondary { border-color: rgb(227 225 245 / 12%); background: rgb(255 255 255 / 5%); color: #dedce8; }
+.demo-button.outline { border-color: var(--color-accent-border); background: transparent; color: var(--color-accent); }
+.demo-button.outline:hover:not(:disabled) { background: var(--color-accent-soft); }
+.demo-button.danger { border-color: color-mix(in srgb,var(--color-error) 42%,transparent); background: color-mix(in srgb,var(--color-error) 14%,var(--color-surface)); color: var(--color-error); }
+.demo-button.danger:hover:not(:disabled) { border-color: var(--color-error); background: color-mix(in srgb,var(--color-error) 22%,var(--color-surface)); }
 .demo-button.secondary:hover:not(:disabled) { border-color: rgb(169 151 245 / 35%); background: rgb(169 151 245 / 10%); }
 .demo-button.ghost { background: transparent; color: #aaa7b7; }
 .demo-button.ghost:hover:not(:disabled) { background: rgb(255 255 255 / 5%); color: #eeeaf9; }

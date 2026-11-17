@@ -92,9 +92,9 @@ function getBadgeCss() {
 .il-export-badge--success { --badge-color: var(--color-success, #7dbb9b); }
 .il-export-badge--warning { --badge-color: var(--color-warning, #eab66f); }
 .il-export-badge--error { --badge-color: var(--color-error, #d38b99); }
-.il-export-badge--default { border-color: color-mix(in srgb,var(--badge-color) 45%,transparent); background: var(--badge-color); color: var(--badge-foreground); }
-.il-export-badge--subtle { border-color: color-mix(in srgb,var(--badge-color) 34%,transparent); background: color-mix(in srgb,var(--badge-color) 13%,var(--color-surface, #171820)); color: var(--badge-color); }
-.il-export-badge--outlined { border-color: color-mix(in srgb,var(--badge-color) 60%,transparent); background: transparent; color: var(--badge-color); }
+.il-export-badge--solid { border-color: color-mix(in srgb,var(--badge-color) 45%,transparent); background: var(--badge-color); color: var(--badge-foreground); }
+.il-export-badge--soft { border-color: color-mix(in srgb,var(--badge-color) 34%,transparent); background: color-mix(in srgb,var(--badge-color) 13%,var(--color-surface, #171820)); color: var(--badge-color); }
+.il-export-badge--outline { border-color: color-mix(in srgb,var(--badge-color) 60%,transparent); background: transparent; color: var(--badge-color); }
 .il-export-badge__dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px color-mix(in srgb,currentColor 45%,transparent); }`
 }
 
@@ -103,6 +103,10 @@ function getAlertCss() {
 .il-export-alert--success { --alert-color: var(--color-success, #7dbb9b); }
 .il-export-alert--warning { --alert-color: var(--color-warning, #eab66f); }
 .il-export-alert--error { --alert-color: var(--color-error, #d38b99); }
+.il-export-alert--small { grid-template-columns: 24px minmax(0,1fr) auto; gap: 9px; padding: 12px; }
+.il-export-alert--small .il-export-alert__icon { width: 23px; height: 23px; font-size: 13px; }
+.il-export-alert--large { grid-template-columns: 34px minmax(0,1fr) auto; gap: 14px; padding: 22px; }
+.il-export-alert--large .il-export-alert__icon { width: 32px; height: 32px; font-size: 17px; }
 .il-export-alert__icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid color-mix(in srgb,var(--alert-color) 34%,transparent); border-radius: 9px; background: color-mix(in srgb,var(--alert-color) 15%,transparent); color: var(--alert-color); font-size: 15px; font-weight: 700; }
 .il-export-alert__copy { min-width: 0; padding-top: 2px; }
 .il-export-alert__copy strong { color: var(--color-text, #e9e8ef); font-size: var(--font-size-sm, 14px); font-weight: 550; }
@@ -196,17 +200,21 @@ function getButtonCss(button: EditorSettings['button']) {
 }
 
 .il-export-button--primary {
-  border-color: rgb(188 171 255 / 30%);
-  background: linear-gradient(180deg, #9b87e6, #7964c3);
-  color: #fff;
-  box-shadow: 0 5px 17px rgb(127 102 205 / 22%), inset 0 1px rgb(255 255 255 / 18%);
+  border-color: var(--color-accent-border, rgb(169 151 245 / 48%));
+  background: var(--color-accent, #a997f5);
+  color: var(--color-accent-contrast, #191722);
+  box-shadow: 0 5px 17px var(--color-accent-glow, rgb(169 151 245 / 22%)), inset 0 1px rgb(255 255 255 / 18%);
 }
 .il-export-button--secondary { border-color: rgb(227 225 245 / 12%); background: rgb(255 255 255 / 5%); color: #dedce8; }
+.il-export-button--outline { border-color: var(--color-accent-border, rgb(169 151 245 / 48%)); background: transparent; color: var(--color-accent, #a997f5); }
+.il-export-button--danger { border-color: color-mix(in srgb,var(--color-error, #d38b99) 42%,transparent); background: color-mix(in srgb,var(--color-error, #d38b99) 14%,var(--color-surface, #171820)); color: var(--color-error, #d38b99); }
 .il-export-button--ghost { background: transparent; color: #aaa7b7; }
 .il-export-button:hover:not(:disabled) { transform: translateY(-2px); }
-.il-export-button--primary:hover:not(:disabled) { background: linear-gradient(180deg, #aa96f3, #8972d5); box-shadow: 0 8px 21px rgb(127 102 205 / 32%), inset 0 1px rgb(255 255 255 / 22%); }
-.il-export-button--secondary:hover:not(:disabled) { border-color: rgb(169 151 245 / 35%); background: rgb(169 151 245 / 10%); }
-.il-export-button--ghost:hover:not(:disabled) { background: rgb(255 255 255 / 5%); color: #eeeaf9; }
+.il-export-button--primary:hover:not(:disabled) { background: var(--color-accent-hover, #baabf7); box-shadow: 0 8px 21px var(--color-accent-glow, rgb(169 151 245 / 32%)), inset 0 1px rgb(255 255 255 / 22%); }
+.il-export-button--secondary:hover:not(:disabled) { border-color: var(--color-accent-border); background: var(--color-accent-soft); }
+.il-export-button--outline:hover:not(:disabled) { background: var(--color-accent-soft, rgb(169 151 245 / 14%)); }
+.il-export-button--danger:hover:not(:disabled) { border-color: var(--color-error, #d38b99); background: color-mix(in srgb,var(--color-error, #d38b99) 22%,var(--color-surface, #171820)); }
+.il-export-button--ghost:hover:not(:disabled) { background: var(--color-accent-soft); color: var(--color-accent); }
 .il-export-button:active:not(:disabled) { transform: translateY(0) scale(.97); }
 .il-export-button:disabled { border-color: rgb(255 255 255 / 4%); background: rgb(255 255 255 / 3%); color: #5f606b; opacity: .65; cursor: not-allowed; box-shadow: none;}
 .il-export-button[data-preview-state="hover"]:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
@@ -233,7 +241,16 @@ function getCardCss(card: EditorSettings['card']) {
 .il-export-card p { max-width: 270px; margin: 8px 0 0; color: var(--color-text-muted, #92929f); font-size: 11px; line-height: 1.7; }
 .il-export-card__eyebrow { color: var(--color-accent, #a997f5); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .il-export-card__link { display: inline-flex; gap: 7px; margin-top: 18px; color: var(--color-accent, #a997f5); font-size: 10px; }
-.il-export-card:hover { transform: translateY(-2px);}`
+.il-export-card:hover { transform: translateY(-2px);}
+.il-export-card--default { background: var(--color-surface-raised, #1d1e28); }
+.il-export-card--elevated { background: linear-gradient(145deg,var(--color-surface-raised, #1d1e28),var(--color-surface, #171820)); }
+.il-export-card--outlined { background: transparent; box-shadow: none; }
+.il-export-card--interactive { cursor: pointer; }
+.il-export-card--interactive:hover { border-color: var(--color-accent-border); box-shadow: 0 18px 50px var(--color-accent-glow); }
+.il-export-card--small h3 { font-size: 16px; }
+.il-export-card--small p { font-size: 12px; }
+.il-export-card--large h3 { font-size: 23px; }
+.il-export-card--large p { font-size: 15px; }`
 }
 
 function getInputCss(input: EditorSettings['input']) {
@@ -257,6 +274,9 @@ function getInputCss(input: EditorSettings['input']) {
 .il-export-input[aria-invalid="true"] { border-color: var(--color-error, #d38b99); box-shadow: 0 0 0 2px color-mix(in srgb,var(--color-error, #d38b99) 16%,transparent); }
 .il-export-input::placeholder { color: var(--color-text-dim, #737480); }
 .il-export-input:disabled { opacity: .55; cursor: not-allowed;}
+.il-export-input--filled { border-color: transparent; background: var(--color-surface-raised, #1d1e28); }
+.il-export-input--outlined { background: transparent; }
+.il-export-input--underlined { padding-inline: 2px; border-width: 0 0 1px; border-radius: 0; background: transparent; }
 .il-export-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;}`
 }
 
@@ -334,9 +354,9 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
       return `<!-- Add a click handler in JavaScript if this action should perform work. -->\n<button class="il-export-button il-export-button--${button.variant}" type="button" data-preview-state="${button.previewState}"${disabled ? ' disabled' : ''}${loading ? ' aria-busy="true"' : ''} style="${escapeHtml(serializeStyle(getButtonStyle(button)))}">${loading ? '<span class="il-export-button__spinner" aria-hidden="true"></span>' : ''}${escapeHtml(button.text || 'Button')}</button>`
     }
     case 'card':
-      return `<article class="il-export-card" aria-labelledby="il-export-card-title" style="${escapeHtml(serializeStyle(getCardStyle(settings.card)))}">\n  <span class="il-export-card__eyebrow">A SMALL MOMENT</span>\n  <h3 id="il-export-card-title">Room for a good idea.</h3>\n  <p>A simple card can make a little space for something worth noticing.</p>\n  <a class="il-export-card__link" href="#">Take a look <span aria-hidden="true">↗</span></a>\n</article>`
+      return `<article class="il-export-card il-export-card--${settings.card.variant} il-export-card--${settings.card.size}" aria-labelledby="il-export-card-title" style="${escapeHtml(serializeStyle(getCardStyle(settings.card)))}">\n  <span class="il-export-card__eyebrow">A SMALL MOMENT</span>\n  <h3 id="il-export-card-title">Room for a good idea.</h3>\n  <p>A simple card can make a little space for something worth noticing.</p>\n  <a class="il-export-card__link" href="#">Take a look <span aria-hidden="true">↗</span></a>\n</article>`
     case 'input':
-      return `<label class="il-export-field">\n  <span class="il-export-sr-only">${escapeHtml(settings.input.placeholder || 'Text input')}</span>\n  <input class="il-export-input" type="text" data-preview-state="${settings.input.previewState}" aria-invalid="${settings.input.previewState === 'error'}" placeholder="${escapeHtml(settings.input.placeholder)}"${settings.input.disabled ? ' disabled' : ''} style="${escapeHtml(serializeStyle(getInputStyle(settings.input)))}" />\n</label>`
+      return `<label class="il-export-field">\n  <span class="il-export-sr-only">${escapeHtml(settings.input.placeholder || 'Text input')}</span>\n  <input class="il-export-input il-export-input--${settings.input.variant}" type="text" data-preview-state="${settings.input.previewState}" aria-invalid="${settings.input.previewState === 'error'}" placeholder="${escapeHtml(settings.input.placeholder)}"${settings.input.disabled ? ' disabled' : ''} style="${escapeHtml(serializeStyle(getInputStyle(settings.input)))}" />\n</label>`
     case 'toggle':
       return `<!-- JavaScript is required to toggle aria-checked and the visual state. -->\n<button class="il-export-toggle" type="button" role="switch" aria-label="Toggle setting" aria-checked="${settings.toggle.defaultOn}" data-preview-state="${settings.toggle.previewState}"${settings.toggle.previewState === 'disabled' ? ' disabled' : ''} style="${escapeHtml(serializeStyle(getToggleStyle(settings.toggle)))}">\n  <span aria-hidden="true"></span>\n</button>`
     case 'slider': {
@@ -351,7 +371,7 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
       const alert = settings.alert
       const icon = alert.variant === 'success' ? '✓' : alert.variant === 'warning' ? '!' : alert.variant === 'error' ? '×' : 'i'
       const role = alert.variant === 'error' ? 'alert' : 'status'
-      return `<div class="il-export-alert il-export-alert--${alert.variant}" role="${role}" aria-live="${alert.variant === 'error' ? 'assertive' : 'polite'}"><span class="il-export-alert__icon" aria-hidden="true">${icon}</span><div class="il-export-alert__copy">${alert.title ? `<strong>${escapeHtml(alert.title)}</strong>` : ''}${alert.description ? `<p>${escapeHtml(alert.description)}</p>` : ''}</div>${alert.dismissible ? '<button type="button" class="il-export-alert__dismiss" aria-label="Dismiss alert">×</button>' : ''}</div>`
+      return `<div class="il-export-alert il-export-alert--${alert.variant} il-export-alert--${alert.size}" role="${role}" aria-live="${alert.variant === 'error' ? 'assertive' : 'polite'}"><span class="il-export-alert__icon" aria-hidden="true">${icon}</span><div class="il-export-alert__copy">${alert.title ? `<strong>${escapeHtml(alert.title)}</strong>` : ''}${alert.description ? `<p>${escapeHtml(alert.description)}</p>` : ''}</div>${alert.dismissible ? '<button type="button" class="il-export-alert__dismiss" aria-label="Dismiss alert">×</button>' : ''}</div>`
     }
     case 'select': {
       const select = settings.select
@@ -418,16 +438,16 @@ export function generateComponentTsx(component: ComponentKind, settings: EditorS
     case 'button': {
       const button = settings.button
       const style = getButtonStyle(button)
-      return `import type { CSSProperties } from 'react'\n\nexport interface ButtonProps {\n  text?: string\n  disabled?: boolean\n  previewState?: 'default' | 'hover' | 'focus' | 'active' | 'disabled' | 'loading'\n  onClick?: () => void\n}\n\nconst buttonStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Button({\n  text = ${tsxLiteral(button.text || 'Button')},\n  disabled = false,\n  previewState = ${tsxLiteral(button.previewState)},\n  onClick,\n}: ButtonProps) {\n  const loading = previewState === 'loading'\n  const isDisabled = disabled || loading || previewState === 'disabled'\n  return (\n    <button\n      className="il-export-button il-export-button--${button.variant}"\n      type="button"\n      data-preview-state={previewState}\n      aria-busy={loading || undefined}\n      disabled={isDisabled}\n      onClick={onClick}\n      style={buttonStyle}\n    >\n      {loading && <span className="il-export-button__spinner" aria-hidden="true" />}\n      {text}\n    </button>\n  )\n}`
+      return `import type { CSSProperties } from 'react'\n\nexport type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'\n\nexport interface ButtonProps {\n  text?: string\n  variant?: ButtonVariant\n  disabled?: boolean\n  previewState?: 'default' | 'hover' | 'focus' | 'active' | 'disabled' | 'loading'\n  onClick?: () => void\n}\n\nconst buttonStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Button({\n  text = ${tsxLiteral(button.text || 'Button')},\n  variant = ${tsxLiteral(button.variant)},\n  disabled = false,\n  previewState = ${tsxLiteral(button.previewState)},\n  onClick,\n}: ButtonProps) {\n  const loading = previewState === 'loading'\n  const isDisabled = disabled || loading || previewState === 'disabled'\n  return (\n    <button\n      className={\`il-export-button il-export-button--\${variant}\`}\n      type="button"\n      data-preview-state={previewState}\n      aria-busy={loading || undefined}\n      disabled={isDisabled}\n      onClick={onClick}\n      style={buttonStyle}\n    >\n      {loading && <span className="il-export-button__spinner" aria-hidden="true" />}\n      {text}\n    </button>\n  )\n}`
     }
     case 'card': {
       const style = getCardStyle(settings.card)
-      return `import type { CSSProperties, ReactNode } from 'react'\n\nexport interface CardProps {\n  children?: ReactNode\n}\n\nconst cardStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Card({ children }: CardProps) {\n  return (\n    <article className="il-export-card" style={cardStyle}>\n      <span className="il-export-card__eyebrow">A SMALL MOMENT</span>\n      <h3>Room for a good idea.</h3>\n      <p>A simple card can make a little space for something worth noticing.</p>\n      {children}\n    </article>\n  )\n}`
+      return `import type { CSSProperties, ReactNode } from 'react'\n\nexport type CardVariant = 'default' | 'elevated' | 'outlined' | 'interactive'\nexport type CardSize = 'small' | 'medium' | 'large'\n\nexport interface CardProps {\n  children?: ReactNode\n  variant?: CardVariant\n  size?: CardSize\n}\n\nconst cardStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Card({ children, variant = ${tsxLiteral(settings.card.variant)}, size = ${tsxLiteral(settings.card.size)} }: CardProps) {\n  return (\n    <article className={\`il-export-card il-export-card--\${variant} il-export-card--\${size}\`} style={cardStyle}>\n      <span className="il-export-card__eyebrow">A SMALL MOMENT</span>\n      <h3>Room for a good idea.</h3>\n      <p>A simple card can make a little space for something worth noticing.</p>\n      {children}\n    </article>\n  )\n}`
     }
     case 'input': {
       const input = settings.input
       const style = getInputStyle(input)
-      return `import { useState, type CSSProperties, type ChangeEvent } from 'react'\n\nexport interface InputProps {\n  value?: string\n  disabled?: boolean\n  previewState?: 'default' | 'hover' | 'focus' | 'error'\n  onChange?: (value: string) => void\n}\n\nconst inputStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Input({\n  value,\n  disabled = ${input.disabled},\n  previewState = ${tsxLiteral(input.previewState)},\n  onChange,\n}: InputProps) {\n  const [internalValue, setInternalValue] = useState('')\n  const currentValue = value ?? internalValue\n\n  function handleChange(event: ChangeEvent<HTMLInputElement>) {\n    setInternalValue(event.target.value)\n    onChange?.(event.target.value)\n  }\n\n  return (\n    <label className="il-export-field">\n      <span className="il-export-sr-only">${tsxLiteral(input.placeholder || 'Text input')}</span>\n      <input\n        className="il-export-input"\n        type="text"\n        data-preview-state={previewState}\n        aria-invalid={previewState === 'error'}\n        placeholder=${tsxLiteral(input.placeholder)}\n        value={currentValue}\n        disabled={disabled}\n        onChange={handleChange}\n        style={inputStyle}\n      />\n    </label>\n  )\n}`
+      return `import { useState, type CSSProperties, type ChangeEvent } from 'react'\n\nexport type InputVariant = 'filled' | 'outlined' | 'underlined'\n\nexport interface InputProps {\n  value?: string\n  variant?: InputVariant\n  disabled?: boolean\n  previewState?: 'default' | 'hover' | 'focus' | 'error'\n  onChange?: (value: string) => void\n}\n\nconst inputStyle: CSSProperties = ${JSON.stringify(style, null, 2)}\n\nexport function Input({\n  value,\n  disabled = ${input.disabled},\n  variant = ${tsxLiteral(input.variant)},\n  previewState = ${tsxLiteral(input.previewState)},\n  onChange,\n}: InputProps) {\n  const [internalValue, setInternalValue] = useState('')\n  const currentValue = value ?? internalValue\n\n  function handleChange(event: ChangeEvent<HTMLInputElement>) {\n    setInternalValue(event.target.value)\n    onChange?.(event.target.value)\n  }\n\n  return (\n    <label className="il-export-field">\n      <span className="il-export-sr-only">${tsxLiteral(input.placeholder || 'Text input')}</span>\n      <input\n        className={\`il-export-input il-export-input--\${variant}\`}\n        type="text"\n        data-preview-state={previewState}\n        aria-invalid={previewState === 'error'}\n        placeholder=${tsxLiteral(input.placeholder)}\n        value={currentValue}\n        disabled={disabled}\n        onChange={handleChange}\n        style={inputStyle}\n      />\n    </label>\n  )\n}`
     }
     case 'toggle': {
       const toggle = settings.toggle
@@ -441,7 +461,7 @@ export function generateComponentTsx(component: ComponentKind, settings: EditorS
     case 'badge': {
       const badge = settings.badge
       return `/* Import the matching CSS export alongside this component. */
-export type BadgeVariant = 'default' | 'subtle' | 'outlined'
+export type BadgeVariant = 'solid' | 'soft' | 'outline'
 export type BadgeColor = 'neutral' | 'primary' | 'success' | 'warning' | 'error'
 export type BadgeSize = 'small' | 'medium' | 'large'
 
@@ -468,22 +488,24 @@ export function Badge({ text = ${tsxLiteral(badge.text)}, variant = ${tsxLiteral
 import { useState } from 'react'
 
 export type AlertVariant = 'info' | 'success' | 'warning' | 'error'
+export type AlertSize = 'small' | 'medium' | 'large'
 
 export interface AlertProps {
   variant?: AlertVariant
+  size?: AlertSize
   title?: string
   description?: string
   dismissible?: boolean
   onDismiss?: () => void
 }
 
-export function Alert({ variant = ${tsxLiteral(alert.variant)}, title = ${tsxLiteral(alert.title)}, description = ${tsxLiteral(alert.description)}, dismissible = ${alert.dismissible}, onDismiss }: AlertProps) {
+export function Alert({ variant = ${tsxLiteral(alert.variant)}, size = ${tsxLiteral(alert.size)}, title = ${tsxLiteral(alert.title)}, description = ${tsxLiteral(alert.description)}, dismissible = ${alert.dismissible}, onDismiss }: AlertProps) {
   const [visible, setVisible] = useState(true)
   if (!visible) return null
   const icon = variant === 'success' ? '✓' : variant === 'warning' ? '!' : variant === 'error' ? '×' : 'i'
   function dismiss() { setVisible(false); onDismiss?.() }
   return (
-    <div className={\`il-export-alert il-export-alert--\${variant}\`} role={variant === 'error' ? 'alert' : 'status'} aria-live={variant === 'error' ? 'assertive' : 'polite'}>
+    <div className={\`il-export-alert il-export-alert--\${variant} il-export-alert--\${size}\`} role={variant === 'error' ? 'alert' : 'status'} aria-live={variant === 'error' ? 'assertive' : 'polite'}>
       <span className="il-export-alert__icon" aria-hidden="true">{icon}</span>
       <div className="il-export-alert__copy">{title && <strong>{title}</strong>}{description && <p>{description}</p>}</div>
       {dismissible && <button type="button" className="il-export-alert__dismiss" aria-label="Dismiss alert" onClick={dismiss}>×</button>}

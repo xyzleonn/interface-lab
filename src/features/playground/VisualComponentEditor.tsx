@@ -34,12 +34,12 @@ const componentMarks: Record<ComponentKind, string> = {
 function createInitialSettings(accent: string): EditorSettings {
   return {
     button: { variant: 'primary', size: 'medium', radius: 9, padding: 18, fontSize: 14, text: 'Create project', previewState: 'default' },
-    card: { radius: 16, padding: 26, shadow: 34, borderVisible: true },
-    input: { placeholder: 'Your email address', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
+    card: { variant: 'default', size: 'medium', radius: 16, padding: 26, shadow: 34, borderVisible: true },
+    input: { placeholder: 'Your email address', variant: 'outlined', radius: 9, size: 'medium', disabled: false, previewState: 'default' },
     toggle: { size: 22, accent, defaultOn: true, previewState: 'default' },
     slider: { min: 0, max: 100, value: 64, accent, previewState: 'default' },
-    badge: { text: 'New', variant: 'subtle', color: 'primary', size: 'medium', showDot: true },
-    alert: { variant: 'info', title: 'A new update is ready', description: 'Explore the latest improvements to your workspace.', dismissible: true },
+    badge: { text: 'New', variant: 'soft', color: 'primary', size: 'medium', showDot: true },
+    alert: { variant: 'info', size: 'medium', title: 'A new update is ready', description: 'Explore the latest improvements to your workspace.', dismissible: true },
     select: { label: 'Workspace', placeholder: 'Choose a workspace', options: ['Interface Lab', 'Personal', 'Experiments'], value: 'Interface Lab', disabled: false, previewState: 'default' },
     modal: { triggerText: 'Open dialog', title: 'A small moment', description: 'A focused space for a short decision or a little more detail.', size: 'medium' },
     tooltip: { triggerText: 'Hover or focus me', content: 'A little context, right when you need it.', placement: 'top' },
@@ -233,7 +233,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     if (selected === 'card') {
       const card = settings.card
       return (
-        <article className="editor-card-preview il-card" style={getCardStyle(card)}>
+        <article className={`editor-card-preview il-card is-${card.variant} is-${card.size}`} style={getCardStyle(card)}>
           <span className="editor-card-eyebrow">A SMALL MOMENT</span>
           <h3>Room for a good idea.</h3>
           <p>A simple card can make a little space for something worth noticing.</p>
@@ -244,7 +244,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
     if (selected === 'input') {
       const input = settings.input
-      return <input className="editor-input-preview il-input" type="text" data-preview-state={input.previewState} aria-label={input.placeholder || 'Text input preview'} aria-invalid={input.previewState === 'error'} placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
+      return <input className={`editor-input-preview il-input is-${input.variant}`} type="text" data-preview-state={input.previewState} aria-label={input.placeholder || 'Text input preview'} aria-invalid={input.previewState === 'error'} placeholder={input.placeholder} disabled={input.disabled} value={inputValue} onChange={(event) => setInputValue(event.target.value)} style={getInputStyle(input)} />
     }
 
     if (selected === 'toggle') {
@@ -261,7 +261,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const alert = settings.alert
       if (alertDismissed) return <p className="editor-alert-dismissed">Alert dismissed</p>
       const icon = alert.variant === 'success' ? '✓' : alert.variant === 'warning' ? '!' : alert.variant === 'error' ? '×' : 'i'
-      return <div className={`editor-alert-preview is-${alert.variant}`} role={alert.variant === 'error' ? 'alert' : 'status'}><span className="editor-alert-icon" aria-hidden="true">{icon}</span><div className="editor-alert-copy">{alert.title && <strong>{alert.title}</strong>}{alert.description && <p>{alert.description}</p>}</div>{alert.dismissible && <button type="button" className="editor-alert-dismiss" aria-label="Dismiss alert" onClick={() => setAlertDismissed(true)}>×</button>}</div>
+      return <div className={`editor-alert-preview is-${alert.variant} is-${alert.size}`} role={alert.variant === 'error' ? 'alert' : 'status'}><span className="editor-alert-icon" aria-hidden="true">{icon}</span><div className="editor-alert-copy">{alert.title && <strong>{alert.title}</strong>}{alert.description && <p>{alert.description}</p>}</div>{alert.dismissible && <button type="button" className="editor-alert-dismiss" aria-label="Dismiss alert" onClick={() => setAlertDismissed(true)}>×</button>}</div>
     }
 
     if (selected === 'select') {
@@ -337,7 +337,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     if (selected === 'button') {
       const button = settings.button
       return <>
-        <SelectProperty label="Variant" value={button.variant} options={[{ value: 'primary', label: 'Primary' }, { value: 'secondary', label: 'Secondary' }, { value: 'ghost', label: 'Ghost' }]} onChange={(variant) => update('button', { variant })} />
+        <SelectProperty label="Variant" value={button.variant} options={[{ value: 'primary', label: 'Primary' }, { value: 'secondary', label: 'Secondary' }, { value: 'outline', label: 'Outline' }, { value: 'ghost', label: 'Ghost' }, { value: 'danger', label: 'Danger' }]} onChange={(variant) => update('button', { variant })} />
         <SelectProperty label="Size" value={button.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('button', { size })} />
         <SelectProperty label="Preview state" value={button.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }, { value: 'loading', label: 'Loading' }]} onChange={(previewState) => update('button', { previewState })} />
         <RangeProperty label="Border radius" value={button.radius} min={0} max={28} unit="px" onChange={(radius) => update('button', { radius })} />
@@ -349,6 +349,8 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     if (selected === 'card') {
       const card = settings.card
       return <>
+        <SelectProperty label="Variant" value={card.variant} options={[{ value: 'default', label: 'Default' }, { value: 'elevated', label: 'Elevated' }, { value: 'outlined', label: 'Outlined' }, { value: 'interactive', label: 'Interactive' }]} onChange={(variant) => update('card', { variant })} />
+        <SelectProperty label="Size" value={card.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('card', { size })} />
         <RangeProperty label="Border radius" value={card.radius} min={0} max={36} unit="px" onChange={(radius) => update('card', { radius })} />
         <RangeProperty label="Padding" value={card.padding} min={12} max={48} unit="px" onChange={(padding) => update('card', { padding })} />
         <RangeProperty label="Shadow intensity" value={card.shadow} min={0} max={100} unit="%" onChange={(shadow) => update('card', { shadow })} />
@@ -359,6 +361,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const input = settings.input
       return <>
         <TextProperty label="Placeholder" value={input.placeholder} maxLength={120} onChange={(placeholder) => update('input', { placeholder })} />
+        <SelectProperty label="Variant" value={input.variant} options={[{ value: 'filled', label: 'Filled' }, { value: 'outlined', label: 'Outlined' }, { value: 'underlined', label: 'Underlined' }]} onChange={(variant) => update('input', { variant })} />
         <RangeProperty label="Border radius" value={input.radius} min={0} max={24} unit="px" onChange={(radius) => update('input', { radius })} />
         <SelectProperty label="Input size" value={input.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('input', { size })} />
         <SelectProperty label="Preview state" value={input.previewState} options={[{ value: 'default', label: 'Default' }, { value: 'hover', label: 'Hover' }, { value: 'focus', label: 'Focus' }, { value: 'error', label: 'Error' }]} onChange={(previewState) => update('input', { previewState })} />
@@ -378,7 +381,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const badge = settings.badge
       return <>
         <TextProperty label="Badge text" value={badge.text} maxLength={120} onChange={(text) => update('badge', { text })} />
-        <SelectProperty label="Appearance" value={badge.variant} options={[{ value: 'default', label: 'Default' }, { value: 'subtle', label: 'Subtle' }, { value: 'outlined', label: 'Outlined' }]} onChange={(variant) => update('badge', { variant })} />
+        <SelectProperty label="Appearance" value={badge.variant} options={[{ value: 'solid', label: 'Solid' }, { value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }]} onChange={(variant) => update('badge', { variant })} />
         <SelectProperty label="Semantic color" value={badge.color} options={[{ value: 'neutral', label: 'Neutral' }, { value: 'primary', label: 'Primary' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(color) => update('badge', { color })} />
         <SelectProperty label="Size" value={badge.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('badge', { size })} />
         <BooleanProperty label="Status dot" checked={badge.showDot} onChange={(showDot) => update('badge', { showDot })} />
@@ -388,6 +391,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       const alert = settings.alert
       return <>
         <SelectProperty label="Variant" value={alert.variant} options={[{ value: 'info', label: 'Information' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(variant) => update('alert', { variant })} />
+        <SelectProperty label="Size" value={alert.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('alert', { size })} />
         <TextProperty label="Title (optional)" value={alert.title} maxLength={120} onChange={(title) => update('alert', { title })} />
         <TextProperty label="Description" value={alert.description} maxLength={300} onChange={(description) => update('alert', { description })} />
         <BooleanProperty label="Dismiss action" checked={alert.dismissible} onChange={(dismissible) => update('alert', { dismissible })} />
