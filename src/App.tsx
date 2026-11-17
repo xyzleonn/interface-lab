@@ -337,11 +337,13 @@ function PreferenceToggle({ checked, title, description, onChange }: { checked: 
 
 function SettingsPage({
   settings,
+  tokens,
   preferences,
   onPreferenceChange,
   onReset,
 }: {
   settings: ThemeSettings
+  tokens: DesignTokens
   preferences: ApplicationPreferences
   onPreferenceChange: (updates: Partial<ApplicationPreferences>) => void
   onReset: () => void
@@ -349,6 +351,7 @@ function SettingsPage({
   const accentColor = settings.accent === 'custom'
     ? settings.customColor
     : accentOptions.find((option) => option.id === settings.accent)?.color ?? defaultAccent
+  const activePalette = tokens.colors[settings.mode]
 
   return (
     <div className="settings-page">
@@ -358,38 +361,50 @@ function SettingsPage({
         <p>A few small choices to make the space work the way you like.</p>
       </section>
 
-      <section className="settings-section" aria-labelledby="motion-settings-title">
-        <div className="section-heading"><div><span className="section-index">01</span><h2 id="motion-settings-title">Motion</h2></div><p>Set the pace of the interface.</p></div>
-        <div className="preference-list">
-          <PreferenceToggle title="Interface animations" description="Animate page entrances and control transitions." checked={preferences.animationsEnabled} onChange={(checked) => onPreferenceChange({ animationsEnabled: checked })} />
-          <PreferenceToggle title="Reduced motion" description="Limit movement, including the dashboard card tilt." checked={preferences.reducedMotion} onChange={(checked) => onPreferenceChange({ reducedMotion: checked })} />
-        </div>
-      </section>
+      <div className="settings-grid">
+        <section className="settings-section" aria-labelledby="motion-settings-title">
+          <div className="section-heading"><div><span className="section-index">01</span><h2 id="motion-settings-title">Motion</h2></div><p>Set the pace of the interface.</p></div>
+          <div className="preference-list">
+            <PreferenceToggle title="Interface animations" description="Animate page entrances and control transitions." checked={preferences.animationsEnabled} onChange={(checked) => onPreferenceChange({ animationsEnabled: checked })} />
+            <PreferenceToggle title="Reduced motion" description="Limit movement, including the dashboard card tilt." checked={preferences.reducedMotion} onChange={(checked) => onPreferenceChange({ reducedMotion: checked })} />
+          </div>
+        </section>
 
-      <section className="settings-section" aria-labelledby="interface-settings-title">
-        <div className="section-heading"><div><span className="section-index">02</span><h2 id="interface-settings-title">Interface</h2></div><p>Choose how much room your content gets.</p></div>
-        <div className="density-options" role="group" aria-label="Interface density">
-          {(['comfortable', 'compact'] as const).map((density) => (
-            <button className={`density-option${preferences.density === density ? ' is-selected' : ''}`} type="button" key={density} aria-pressed={preferences.density === density} onClick={() => onPreferenceChange({ density })}>
-              <span className={`density-preview ${density}`} aria-hidden="true"><i /><i /><i /></span>
-              <span><strong>{density === 'comfortable' ? 'Comfortable' : 'Compact'}</strong><small>{density === 'comfortable' ? 'A little more breathing room' : 'Fit more into each view'}</small></span>
-              <i className="density-check" aria-hidden="true">✓</i>
-            </button>
-          ))}
-        </div>
-        <div className="preference-list preference-list-single">
-          <PreferenceToggle title="Cursor light reflections" description="Show a soft highlight as you move across dashboard cards." checked={preferences.cardReflections} onChange={(checked) => onPreferenceChange({ cardReflections: checked })} />
-        </div>
-      </section>
+        <section className="settings-section" aria-labelledby="interface-settings-title">
+          <div className="section-heading"><div><span className="section-index">02</span><h2 id="interface-settings-title">Interface</h2></div><p>Choose how much room your content gets.</p></div>
+          <div className="density-options" role="group" aria-label="Interface density">
+            {(['comfortable', 'compact'] as const).map((density) => (
+              <button className={`density-option${preferences.density === density ? ' is-selected' : ''}`} type="button" key={density} aria-pressed={preferences.density === density} onClick={() => onPreferenceChange({ density })}>
+                <span className={`density-preview ${density}`} aria-hidden="true"><i /><i /><i /></span>
+                <span><strong>{density === 'comfortable' ? 'Comfortable' : 'Compact'}</strong><small>{density === 'comfortable' ? 'A little more breathing room' : 'Fit more into each view'}</small></span>
+                <i className="density-check" aria-hidden="true">✓</i>
+              </button>
+            ))}
+          </div>
+          <div className="preference-list preference-list-single">
+            <PreferenceToggle title="Cursor light reflections" description="Show a soft highlight as you move across dashboard cards." checked={preferences.cardReflections} onChange={(checked) => onPreferenceChange({ cardReflections: checked })} />
+          </div>
+        </section>
 
-      <section className="settings-section appearance-settings" aria-labelledby="appearance-settings-title">
-        <div className="section-heading"><div><span className="section-index">03</span><h2 id="appearance-settings-title">Appearance</h2></div><p>Your active Theme Studio choices.</p></div>
-        <div className="settings-theme-summary">
-          <span className="settings-accent-swatch" style={{ backgroundColor: accentColor }} />
-          <span className="settings-theme-copy"><strong>{settings.mode === 'dark' ? 'Dark appearance' : 'Light appearance'}</strong><small>{getAccentLabel(settings)}</small></span>
-          <a className="settings-theme-link" href="#theme-studio">Open Theme Studio <span>↗</span></a>
-        </div>
-      </section>
+        <section className="settings-section appearance-settings" aria-labelledby="appearance-settings-title">
+          <div className="section-heading"><div><span className="section-index">03</span><h2 id="appearance-settings-title">Appearance</h2></div><p>Your active Theme Studio choices.</p></div>
+          <div className="settings-theme-summary">
+            <div className="settings-theme-preview" aria-hidden="true" style={{ backgroundColor: activePalette.background, borderColor: activePalette.border }}>
+              <span className="settings-preview-sidebar" style={{ backgroundColor: activePalette.surface }} />
+              <span className="settings-preview-content">
+                <i style={{ backgroundColor: activePalette.text }} />
+                <i style={{ backgroundColor: activePalette.textMuted }} />
+                <b style={{ backgroundColor: accentColor }} />
+              </span>
+            </div>
+            <span className="settings-theme-copy"><strong>{settings.mode === 'dark' ? 'Dark appearance' : 'Light appearance'}</strong><small>{getAccentLabel(settings)}</small></span>
+            <span className="settings-theme-palette" role="img" aria-label="Active accent, secondary, raised surface and muted text colors">
+              {[accentColor, tokens.colors.secondary, activePalette.surfaceRaised, activePalette.textMuted].map((color, index) => <i key={`${color}-${index}`} style={{ backgroundColor: color }} />)}
+            </span>
+            <a className="settings-theme-link" href="#theme-studio">Open Theme Studio <span>↗</span></a>
+          </div>
+        </section>
+      </div>
 
       <section className="settings-reset-section" aria-labelledby="reset-settings-title">
         <div><h2 id="reset-settings-title">Reset preferences</h2><p>Restore motion, density, and appearance preferences to their defaults.</p></div>
@@ -525,7 +540,7 @@ function App() {
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )
