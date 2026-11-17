@@ -1,4 +1,5 @@
 import type { DesignTokens } from './tokenTypes'
+import { normalizeColorHex } from '../../utils/colors'
 
 export const defaultDesignTokens: DesignTokens = {
   colors: {
@@ -45,12 +46,7 @@ export const defaultDesignTokens: DesignTokens = {
   effects: { shadowX: 0, shadowY: 14, shadowBlur: 38, shadowOpacity: 0.14, borderOpacity: 0.09 },
 }
 
-export function normalizeTokenHex(value: string): string | null {
-  const hex = value.trim().replace(/^#/, '')
-  if (/^[\da-f]{3}$/i.test(hex)) return `#${hex.split('').map((digit) => digit + digit).join('').toLowerCase()}`
-  if (/^[\da-f]{6}$/i.test(hex)) return `#${hex.toLowerCase()}`
-  return null
-}
+export const normalizeTokenHex = normalizeColorHex
 
 export function getReadableTextColor(color: string) {
   const channels = normalizeTokenHex(color)?.slice(1).match(/.{2}/g)?.map((channel) => Number.parseInt(channel, 16)) ?? [169, 151, 245]

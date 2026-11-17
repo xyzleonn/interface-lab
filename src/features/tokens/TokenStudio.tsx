@@ -1,41 +1,18 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { defaultDesignTokens, normalizeDesignTokens, normalizeTokenHex, safeFontFamily } from './tokenDefaults'
+import { ColorPickerField } from '../../components/ui/ColorPickerField'
+import { RangeSlider } from '../../components/ui/RangeSlider'
+import { defaultDesignTokens, normalizeDesignTokens, safeFontFamily } from './tokenDefaults'
 import { designTokensToCss, getPreviewTokenVariables } from './tokenCss'
 import { loadTokenPresets, saveTokenPresets } from './tokenStorage'
 import type { DesignTokens, TokenPreset } from './tokenTypes'
 import './TokenStudio.css'
 
 function TokenColorField({ label, value, onChange, onReset }: { label: string; value: string; onChange: (value: string) => void; onReset: () => void }) {
-  const [hexStatus, setHexStatus] = useState({ source: value, invalid: false })
-  const [hexDraft, setHexDraft] = useState({ source: value, text: value })
-  const invalid = hexStatus.source === value && hexStatus.invalid
-  const hexValue = hexDraft.source === value ? hexDraft.text : value
-
-  function updatePickerColor(color: string) {
-    setHexStatus({ source: color, invalid: false })
-    setHexDraft({ source: color, text: color })
-    onChange(color)
-  }
-
   return (
     <div className="token-color-field">
       <span className="token-color-label">{label}</span>
-      <label className="token-color-picker">
-        <span className="token-color-swatch" aria-hidden="true" style={{ backgroundColor: value }} />
-        <input aria-label={`${label} color picker`} type="color" value={value} onInput={(event) => updatePickerColor(event.currentTarget.value)} onChange={(event) => updatePickerColor(event.currentTarget.value)} />
-      </label>
-      <input aria-label={`${label} HEX value`} aria-invalid={invalid} className={invalid ? 'is-invalid' : ''} value={hexValue} maxLength={7} spellCheck={false} onChange={(event) => setHexDraft({ source: value, text: event.currentTarget.value })} onBlur={(event) => {
-        const normalized = normalizeTokenHex(event.currentTarget.value)
-        setHexStatus({ source: value, invalid: !normalized })
-        if (normalized) {
-          setHexDraft({ source: normalized, text: normalized })
-          onChange(normalized)
-        } else {
-          setHexDraft({ source: value, text: value })
-        }
-      }} />
+      <ColorPickerField label={label} value={value} onChange={onChange} className="token-color-control" showLabel={false} />
       <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
-      {invalid && <small className="token-field-error">Use a valid HEX value.</small>}
     </div>
   )
 }
@@ -44,7 +21,7 @@ function TokenNumberField({ label, value, min, max, step = 1, unit = 'px', onCha
   return (
     <label className="token-number-field">
       <span>{label}<output>{value}{unit}</output></span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <RangeSlider min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} aria-label={label} />
       <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
     </label>
   )

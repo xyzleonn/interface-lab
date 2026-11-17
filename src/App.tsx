@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
+import { ColorPickerField } from './components/ui/ColorPickerField'
 import { useCardParallax } from './hooks/useCardParallax'
 import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
 import { TokenStudio } from './features/tokens/TokenStudio'
 import { getDesignTokenVariables } from './features/tokens/tokenCss'
 import { loadDesignTokens, saveDesignTokens } from './features/tokens/tokenStorage'
 import type { DesignTokens } from './features/tokens/tokenTypes'
+import { normalizeColorHex } from './utils/colors'
 import { normalizeDesignTokens } from './features/tokens/tokenDefaults'
 import './App.css'
 
@@ -62,15 +64,8 @@ const accentOptions: { id: Exclude<AccentId, 'custom'>; label: string; color: st
   { id: 'amber', label: 'Warm amber', color: '#eab66f' },
 ]
 
-function normalizeHex(value: string): string | null {
-  const hex = value.trim().replace(/^#/, '')
-  if (/^[\da-f]{3}$/i.test(hex)) return `#${hex.split('').map((digit) => digit + digit).join('').toLowerCase()}`
-  if (/^[\da-f]{6}$/i.test(hex)) return `#${hex.toLowerCase()}`
-  return null
-}
-
 function deriveAccent(color: string) {
-  const normalized = normalizeHex(color) ?? defaultAccent
+  const normalized = normalizeColorHex(color) ?? defaultAccent
   const channels = normalized.slice(1).match(/.{2}/g)?.map((channel) => Number.parseInt(channel, 16)) ?? [169, 151, 245]
   const [red, green, blue] = channels
   const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
@@ -95,7 +90,7 @@ function loadThemeSettings(): ThemeSettings {
         const value = parsed as ThemeSettings
         const validMode = value.mode === 'dark' || value.mode === 'light'
         const validAccent = value.accent === 'custom' || accentOptions.some((option) => option.id === value.accent)
-        const customColor = normalizeHex(typeof value.customColor === 'string' ? value.customColor : defaultAccent)
+        const customColor = normalizeColorHex(typeof value.customColor === 'string' ? value.customColor : defaultAccent)
         if (validMode && validAccent && customColor) return { mode: value.mode, accent: value.accent, customColor }
       }
     }
@@ -200,11 +195,6 @@ function Sidebar({ currentPage }: { currentPage: PageId }) {
         <div><strong>A space to explore</strong><p>Make something feel just right.</p></div>
       </div>
       <a className={`nav-item settings-link${currentPage === 'settings' ? ' is-active' : ''}`} href="#settings" aria-current={currentPage === 'settings' ? 'page' : undefined}><Icon name="settings" /><span>Settings</span>{currentPage === 'settings' && <span className="nav-indicator" />}</a>
-      <button className="profile-button" type="button">
-        <span className="profile-avatar">S</span>
-        <span className="profile-copy"><strong>Your profile</strong><small>Personal account</small></span>
-        <span className="profile-more" aria-hidden="true">···</span>
-      </button>
     </aside>
   )
 }
@@ -261,30 +251,17 @@ function PlaygroundPage({ themeAccent }: { themeAccent: string }) {
 }
 
 function ThemeStudioPage({ settings, onChange }: { settings: ThemeSettings; onChange: (settings: ThemeSettings) => void }) {
-  const [hexDraft, setHexDraft] = useState(settings.customColor)
-  const [hexError, setHexError] = useState(false)
   const selectedAccent = settings.accent === 'custom'
     ? { id: 'custom' as const, label: 'Custom', color: settings.customColor }
     : accentOptions.find((option) => option.id === settings.accent) ?? accentOptions[0]
 
   function selectCustomColor(color: string) {
-    const normalized = normalizeHex(color)
+    const normalized = normalizeColorHex(color)
     if (!normalized) return
-    setHexDraft(normalized)
-    setHexError(false)
     onChange({ ...settings, accent: 'custom', customColor: normalized })
   }
 
-  function editHex(value: string) {
-    setHexDraft(value)
-    const normalized = normalizeHex(value)
-    setHexError(!normalized)
-    if (normalized) onChange({ ...settings, accent: 'custom', customColor: normalized })
-  }
-
   function resetAccent() {
-    setHexDraft(defaultAccent)
-    setHexError(false)
     onChange({ ...settings, accent: 'lavender', customColor: defaultAccent })
   }
 
@@ -319,18 +296,21 @@ function ThemeStudioPage({ settings, onChange }: { settings: ThemeSettings; onCh
             </button>
           ))}
           <button className={`accent-option custom-accent-option${settings.accent === 'custom' ? ' is-selected' : ''}`} type="button" aria-label="Custom accent color" aria-pressed={settings.accent === 'custom'} onClick={() => onChange({ ...settings, accent: 'custom' })}>
-            <span className="custom-swatch" style={{ backgroundColor: settings.customColor }}>＋</span>
+            <span className="custom-swatch" style={{ backgroundColor: settings.customColor }}>
+              <span className="custom-swatch-icon" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 12 12" focusable="false">
+                  <line x1="2" y1="6" x2="10" y2="6" />
+                  <line x1="6" y1="2" x2="6" y2="10" />
+                </svg>
+              </span>
+            </span>
             <small>Custom</small>
           </button>
         </div>
         <div className="custom-color-controls">
-          <label className="color-picker-label" htmlFor="custom-color-picker"><span className="color-picker-swatch" style={{ backgroundColor: settings.customColor }} /><span>Custom accent</span></label>
-          <input id="custom-color-picker" className="native-color-picker" type="color" value={settings.customColor} aria-label="Choose a custom accent color" onChange={(event) => selectCustomColor(event.target.value)} />
-          <label className="hex-input-label" htmlFor="custom-color-hex">HEX</label>
-          <input id="custom-color-hex" className={`hex-input${hexError ? ' has-error' : ''}`} type="text" value={hexDraft} onChange={(event) => editHex(event.target.value)} onBlur={() => { if (hexError) { setHexDraft(settings.customColor); setHexError(false) } }} aria-invalid={hexError} aria-describedby={hexError ? 'hex-color-error' : undefined} spellCheck={false} maxLength={7} />
+          <ColorPickerField label="Custom accent" value={settings.customColor} onChange={selectCustomColor} className="theme-accent-picker" commitOnChange revertInvalidOnBlur />
           <button className="reset-accent-button" type="button" onClick={resetAccent}>Reset to default</button>
         </div>
-        {hexError && <p className="hex-error-message" id="hex-color-error">Enter a valid HEX color, such as #A997F5.</p>}
       </section>
 
       <section className="theme-settings-section live-preview-section" aria-labelledby="preview-title">
@@ -566,7 +546,7 @@ function OverviewPage({ settings, activity }: { settings: ThemeSettings; activit
           <h1 id="welcome-title">{getGreeting()},<br /><span>let’s make something.</span></h1>
           <p>A little space to explore ideas, tune the details, and build interfaces that feel like you.</p>
         </div>
-        <div className="welcome-orbit" aria-hidden="true"><i /><i /><i /><span>✳</span></div>
+        <div className="welcome-orbit" aria-hidden="true"><div className="welcome-orbit-dots"><i /><i /><i /></div><span>✳</span></div>
       </section>
 
       <section className="dashboard-grid" aria-label="Your workspace">
@@ -585,11 +565,12 @@ function OverviewPage({ settings, activity }: { settings: ThemeSettings; activit
         </DashboardCard>
 
         <DashboardCard className="theme-overview-card" href="#theme-studio" ariaLabel="Open Theme Studio to edit the current theme">
-          <div className="dashboard-card-top"><span className="dashboard-card-label">CURRENT THEME</span><span className="mini-link">Edit <span>↗</span></span></div>
+          <div className="dashboard-card-top"><span className="dashboard-card-icon theme-card-icon"><Icon name="sparkles" size={15} /></span><span className="dashboard-card-label">CURRENT THEME</span></div>
           <div className="current-theme-display"><span className="theme-color-orb" style={{ backgroundColor: accent }} /><div><strong>{settings.mode === 'dark' ? 'Dark mode' : 'Light mode'}</strong><small>{getAccentLabel(settings)}</small></div></div>
           <div className="theme-card-divider" />
           <div className="theme-attributes"><span><i className="mode-indicator" /> Appearance</span><strong>{settings.mode}</strong></div>
           <div className="theme-attributes"><span><i className="accent-indicator" style={{ backgroundColor: accent }} /> Accent</span><strong>{settings.accent === 'custom' ? 'Custom' : 'Preset'}</strong></div>
+          <span className="dashboard-card-link">Edit <span>↗</span></span>
         </DashboardCard>
 
         <DashboardCard className="activity-card">

@@ -1,16 +1,25 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { DemoButton, Toggle } from '../../components/ui/PlaygroundControls'
+import { ColorPickerField } from '../../components/ui/ColorPickerField'
+import { RangeSlider } from '../../components/ui/RangeSlider'
+import { CustomSelect } from './CustomSelect'
+import { CustomSelectPreview } from './CustomSelectPreview'
 import { loadPresets, savePresets } from './presetStorage'
 import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getToggleStyle } from './componentExport'
-import type { ComponentKind, ComponentPreset, EditorComponentKind, EditorSettings } from './editorTypes'
+import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 import './VisualComponentEditor.css'
 
-const componentOptions: { id: EditorComponentKind; label: string; description: string; mark: string }[] = [
+const componentOptions: { id: ComponentKind; label: string; description: string; mark: string }[] = [
   { id: 'button', label: 'Button', description: 'Actions and links', mark: '↗' },
   { id: 'card', label: 'Card', description: 'Content surfaces', mark: '▱' },
   { id: 'input', label: 'Input field', description: 'Text entry', mark: 'Aa' },
   { id: 'toggle', label: 'Toggle', description: 'On or off states', mark: '◉' },
   { id: 'slider', label: 'Slider', description: 'Adjustable values', mark: '⌁' },
+  { id: 'badge', label: 'Badge', description: 'Status and metadata', mark: '●' },
+  { id: 'select', label: 'Select', description: 'Choose an option', mark: '⌄' },
+  { id: 'modal', label: 'Modal', description: 'Focused dialog states', mark: '▢' },
+  { id: 'tooltip', label: 'Tooltip', description: 'Helpful context', mark: '?' },
+  { id: 'tabs', label: 'Tabs', description: 'Switch content views', mark: 'Ⅱ' },
 ]
 const componentNames: Record<ComponentKind, string> = {
   button: 'Button', card: 'Card', input: 'Input field', toggle: 'Toggle', slider: 'Slider',
@@ -40,7 +49,7 @@ function RangeProperty({ label, value, min, max, unit = '', onChange }: { label:
   return (
     <label className="editor-property range-property">
       <span>{label}<output>{value}{unit}</output></span>
-      <input type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <RangeSlider min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} aria-label={label} />
     </label>
   )
 }
@@ -54,15 +63,8 @@ function TextProperty({ label, value, onChange, placeholder, maxLength }: { labe
   )
 }
 
-function SelectProperty<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
-  return (
-    <label className="editor-property select-property">
-      <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value as T)}>
-        {options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-      </select>
-    </label>
-  )
+function SelectProperty<T extends string>({ label, value, options, onChange, placeholder }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; placeholder?: string }) {
+  return <CustomSelect label={label} value={value} options={options} onChange={onChange} placeholder={placeholder} compact />
 }
 
 function BooleanProperty({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
@@ -75,16 +77,11 @@ function BooleanProperty({ label, checked, onChange }: { label: string; checked:
 }
 
 function ColorProperty({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="editor-property color-property">
-      <span>{label}</span>
-      <span className="editor-color-input"><input type="color" value={value} onChange={(event) => onChange(event.target.value)} /><code>{value.toUpperCase()}</code></span>
-    </label>
-  )
+  return <ColorPickerField label={label} value={value} onChange={onChange} className="playground-color-picker" commitOnChange revertInvalidOnBlur />
 }
 
 export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) {
-  const [selected, setSelected] = useState<EditorComponentKind>('button')
+  const [selected, setSelected] = useState<ComponentKind>('button')
   const [settings, setSettings] = useState<EditorSettings>(() => createInitialSettings(themeAccent))
   const [inputValue, setInputValue] = useState('')
   const [presets, setPresets] = useState<ComponentPreset[]>(loadPresets)
@@ -94,12 +91,34 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   const [exportFormat, setExportFormat] = useState<'tsx' | 'css' | 'html'>('tsx')
   const [notice, setNotice] = useState('')
   const [copyNotice, setCopyNotice] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const modalDialogRef = useRef<HTMLDivElement>(null)
+  const modalTriggerRef = useRef<HTMLButtonElement>(null)
+  const wasModalOpenRef = useRef(false)
+  const tabsId = useId()
 
   const generatedCode = exportFormat === 'tsx'
     ? generateComponentTsx(selected, settings)
     : exportFormat === 'html'
       ? generateComponentHtml(selected, settings)
       : generateComponentCss(selected, settings)
+  const htmlExportNote = selected === 'button'
+    ? 'The button is static markup; add a JavaScript click handler to perform an action.'
+    : selected === 'toggle'
+      ? 'JavaScript is needed to update the switch state and its aria-checked value.'
+      : selected === 'modal'
+        ? 'JavaScript is needed to open and close the dialog and return focus to its trigger.'
+        : selected === 'tabs'
+          ? 'JavaScript is needed to switch the selected tab and reveal its panel.'
+          : selected === 'tooltip'
+            ? 'The tooltip appears on hover and keyboard focus using CSS.'
+            : 'This semantic HTML control works natively; the CSS export supplies its appearance.'
+
+  useEffect(() => {
+    if (modalOpen) modalDialogRef.current?.focus()
+    else if (wasModalOpenRef.current) modalTriggerRef.current?.focus()
+    wasModalOpenRef.current = modalOpen
+  }, [modalOpen])
 
   function update<K extends ComponentKind>(component: K, updates: Partial<EditorSettings[K]>) {
     setSettings((current) => ({ ...current, [component]: { ...current[component], ...updates } }))
@@ -113,12 +132,21 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       return
     }
 
+    const properties = selected === 'select'
+      ? {
+          ...settings.select,
+          options: settings.select.options.length > 0 ? [...settings.select.options] : ['Option 1'],
+          value: settings.select.options.includes(settings.select.value) ? settings.select.value : '',
+        }
+      : selected === 'tabs'
+        ? { ...settings.tabs, labels: settings.tabs.labels.map((label, index) => label.trim() || `Tab ${index + 1}`) }
+        : { ...settings[selected] }
     const preset = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: name.slice(0, 60),
       savedAt: Date.now(),
       component: selected,
-      properties: { ...settings[selected] },
+      properties,
     } as ComponentPreset
     const nextPresets = [preset, ...presets]
     if (!savePresets(nextPresets)) {
@@ -132,18 +160,16 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   }
 
   function loadPreset(preset: ComponentPreset) {
-    const isCurrentlyEditable = componentOptions.some((component) => component.id === preset.component)
     const restoredProperties = preset.component === 'select'
-      ? { ...preset.properties, options: [...preset.properties.options] }
+      ? { ...preset.properties, options: [...new Set(preset.properties.options)] }
       : preset.component === 'tabs'
         ? { ...preset.properties, labels: [...preset.properties.labels] }
         : { ...preset.properties }
-    if (isCurrentlyEditable) setSelected(preset.component as EditorComponentKind)
+    setSelected(preset.component)
+    setModalOpen(false)
     setSettings((current) => ({ ...current, [preset.component]: restoredProperties }) as EditorSettings)
     setInputValue('')
-    setNotice(isCurrentlyEditable
-      ? `Loaded “${preset.name}”.`
-      : `Restored “${preset.name}” settings. Its preview and controls will be added in the next phase.`)
+    setNotice(`Loaded “${preset.name}”.`)
   }
 
   function deletePreset(preset: ComponentPreset) {
@@ -164,6 +190,28 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     } catch {
       setCopyNotice('Clipboard access is unavailable here')
       window.setTimeout(() => setCopyNotice(''), 2500)
+    }
+  }
+
+  function handleModalDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setModalOpen(false)
+      return
+    }
+    if (event.key !== 'Tab') return
+
+    const focusable = event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (!first || !last) {
+      event.preventDefault()
+    } else if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
     }
   }
 
@@ -195,11 +243,73 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
       return <Toggle label="Preview toggle" checked={toggle.defaultOn} onChange={() => update('toggle', { defaultOn: !toggle.defaultOn })} style={getToggleStyle(toggle)} className="il-toggle" />
     }
 
+    if (selected === 'badge') {
+      const badge = settings.badge
+      return <span className={`editor-badge-preview is-${badge.variant} is-${badge.size}`}>{badge.showDot && <i aria-hidden="true" />}{badge.text}</span>
+    }
+
+    if (selected === 'select') {
+      const select = settings.select
+      return <CustomSelectPreview {...select} onChange={(value) => update('select', { value })} />
+    }
+
+    if (selected === 'modal') {
+      const modal = settings.modal
+      return (
+        <div className="editor-modal-preview">
+          <button className="demo-button primary editor-modal-trigger" ref={modalTriggerRef} type="button" tabIndex={modalOpen ? -1 : 0} aria-hidden={modalOpen} onClick={() => setModalOpen(true)}>{modal.triggerText}</button>
+          {modalOpen && (
+            <div className="editor-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setModalOpen(false) }}>
+              <div className="editor-modal-dialog" data-size={modal.size} ref={modalDialogRef} role="dialog" aria-modal="true" aria-labelledby={`${tabsId}-modal-title`} aria-describedby={`${tabsId}-modal-description`} tabIndex={-1} onKeyDown={handleModalDialogKeyDown}>
+                <span className="editor-modal-kicker">INTERFACE LAB · DIALOG</span>
+                <h3 id={`${tabsId}-modal-title`}>{modal.title}</h3>
+                <p id={`${tabsId}-modal-description`}>{modal.description}</p>
+                <button className="demo-button secondary editor-modal-close" type="button" onClick={() => setModalOpen(false)}>Close dialog</button>
+                <button className="editor-modal-dismiss" type="button" aria-label="Close dialog" onClick={() => setModalOpen(false)}>×</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (selected === 'tooltip') {
+      const tooltip = settings.tooltip
+      return (
+        <div className={`editor-tooltip-preview at-${tooltip.placement}`}>
+          <button className="demo-button secondary" type="button" aria-describedby={`${tabsId}-tooltip`}>{tooltip.triggerText}</button>
+          <span className="editor-tooltip-bubble" id={`${tabsId}-tooltip`} role="tooltip">{tooltip.content}</span>
+        </div>
+      )
+    }
+
+    if (selected === 'tabs') {
+      const tabs = settings.tabs
+      const activeLabel = tabs.labels[tabs.activeIndex] ?? tabs.labels[0]
+      const activeTabId = `${tabsId}-tab-${tabs.activeIndex}`
+      return (
+        <div className="editor-tabs-preview">
+          <div className="editor-tabs-list" role="tablist" aria-label="Preview tabs">
+            {tabs.labels.map((label, index) => <button className={index === tabs.activeIndex ? 'is-active' : ''} id={`${tabsId}-tab-${index}`} key={`${label}-${index}`} type="button" role="tab" aria-selected={index === tabs.activeIndex} aria-controls={`${tabsId}-panel`} tabIndex={index === tabs.activeIndex ? 0 : -1} onClick={() => update('tabs', { activeIndex: index })} onKeyDown={(event) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+              event.preventDefault()
+              const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.labels.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.labels.length) % tabs.labels.length
+              update('tabs', { activeIndex: nextIndex })
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]?.focus()
+            }}>{label}</button>)}
+          </div>
+          <section className="editor-tabs-panel" id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={activeTabId}>
+            <span className="editor-tabs-kicker">CURRENT VIEW</span><h3>{activeLabel}</h3><p>This panel is showing the {activeLabel} view.</p>
+          </section>
+        </div>
+      )
+    }
+
     const slider = settings.slider
     return (
       <label className="editor-slider-preview il-slider">
         <span><strong>Preview value</strong><output>{slider.value}</output></span>
-        <input type="range" min={slider.min} max={slider.max} value={slider.value} style={{ accentColor: slider.accent }} onChange={(event) => update('slider', { value: Number(event.target.value) })} />
+        <RangeSlider min={slider.min} max={slider.max} value={slider.value} accentColor={slider.accent} aria-label="Preview value" onChange={(event) => update('slider', { value: Number(event.target.value) })} />
         <small><span>{slider.min}</span><span>{slider.max}</span></small>
       </label>
     )
@@ -243,14 +353,64 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
         <BooleanProperty label="Default state" checked={toggle.defaultOn} onChange={(defaultOn) => update('toggle', { defaultOn })} />
       </>
     }
+    if (selected === 'badge') {
+      const badge = settings.badge
+      return <>
+        <TextProperty label="Badge text" value={badge.text} maxLength={120} onChange={(text) => update('badge', { text })} />
+        <SelectProperty label="Variant" value={badge.variant} options={[{ value: 'neutral', label: 'Neutral' }, { value: 'accent', label: 'Accent' }, { value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }]} onChange={(variant) => update('badge', { variant })} />
+        <SelectProperty label="Size" value={badge.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }]} onChange={(size) => update('badge', { size })} />
+        <BooleanProperty label="Status dot" checked={badge.showDot} onChange={(showDot) => update('badge', { showDot })} />
+      </>
+    }
+    if (selected === 'select') {
+      const select = settings.select
+      return <>
+        <TextProperty label="Field label" value={select.label} maxLength={80} onChange={(label) => update('select', { label })} />
+        <TextProperty label="Placeholder" value={select.placeholder} maxLength={100} onChange={(placeholder) => update('select', { placeholder })} />
+        <TextProperty label="Options (comma-separated)" value={select.options.join(', ')} maxLength={500} onChange={(optionsText) => {
+          const parsedOptions = [...new Set(optionsText.split(',').map((option) => option.trim()).filter(Boolean))].slice(0, 10)
+          update('select', { options: parsedOptions, value: parsedOptions.includes(select.value) ? select.value : '' })
+        }} />
+        <SelectProperty label="Selected option" value={select.value} options={[{ value: '', label: 'Placeholder' }, ...select.options.map((option) => ({ value: option, label: option }))]} placeholder="Placeholder" onChange={(value) => update('select', { value })} />
+        <BooleanProperty label="Disabled" checked={select.disabled} onChange={(disabled) => update('select', { disabled })} />
+      </>
+    }
+    if (selected === 'modal') {
+      const modal = settings.modal
+      return <>
+        <TextProperty label="Trigger text" value={modal.triggerText} maxLength={80} onChange={(triggerText) => update('modal', { triggerText })} />
+        <TextProperty label="Title" value={modal.title} maxLength={120} onChange={(title) => update('modal', { title })} />
+        <TextProperty label="Description" value={modal.description} maxLength={500} onChange={(description) => update('modal', { description })} />
+        <SelectProperty label="Dialog size" value={modal.size} options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} onChange={(size) => update('modal', { size })} />
+      </>
+    }
+    if (selected === 'tooltip') {
+      const tooltip = settings.tooltip
+      return <>
+        <TextProperty label="Trigger text" value={tooltip.triggerText} maxLength={80} onChange={(triggerText) => update('tooltip', { triggerText })} />
+        <TextProperty label="Tooltip content" value={tooltip.content} maxLength={240} onChange={(content) => update('tooltip', { content })} />
+        <SelectProperty label="Placement" value={tooltip.placement} options={[{ value: 'top', label: 'Top' }, { value: 'right', label: 'Right' }, { value: 'bottom', label: 'Bottom' }, { value: 'left', label: 'Left' }]} onChange={(placement) => update('tooltip', { placement })} />
+      </>
+    }
+    if (selected === 'tabs') {
+      const tabs = settings.tabs
+      return <>
+        {tabs.labels.map((label, index) => <TextProperty key={index} label={`Tab ${index + 1} label`} value={label} maxLength={40} onChange={(nextLabel) => {
+          const labels = [...tabs.labels]
+          labels[index] = nextLabel
+          update('tabs', { labels })
+        }} />)}
+        <SelectProperty label="Active tab" value={String(tabs.activeIndex)} options={tabs.labels.map((label, index) => ({ value: String(index), label }))} onChange={(activeIndex) => update('tabs', { activeIndex: Number(activeIndex) })} />
+      </>
+    }
 
     const slider = settings.slider
     return <>
-      <NumberProperty label="Minimum" value={slider.min} onChange={(min) => {
+      <NumberProperty label="Minimum" value={slider.min} min={-100000} max={slider.max - 1} onChange={(min) => {
         const nextMin = Math.min(min, slider.max - 1)
         update('slider', { min: nextMin, value: Math.min(slider.max, Math.max(nextMin, slider.value)) })
       }} />
-      <NumberProperty label="Maximum" value={slider.max} onChange={(max) => {
+      <NumberProperty label="Maximum" value={slider.max} min={slider.min + 1} max={100000} onChange={(max) => {
         const nextMax = Math.max(max, slider.min + 1)
         update('slider', { max: nextMax, value: Math.max(slider.min, Math.min(nextMax, slider.value)) })
       }} />
@@ -293,16 +453,16 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
             {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" role="tab" aria-selected={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
           </div>
           <pre><code>{generatedCode}</code></pre>
-          <p>{exportFormat === 'tsx' ? 'The component includes typed props and uses the matching scoped CSS classes from the CSS export.' : exportFormat === 'css' ? 'Scoped styles for this component only. Pair with the generated HTML or React component.' : 'Static accessible markup. Toggle and slider interactions require JavaScript to update their values.'}</p>
+          <p>{exportFormat === 'tsx' ? 'The component includes typed props and uses the matching scoped CSS classes from the CSS export.' : exportFormat === 'css' ? 'Scoped styles for this component only. Pair with the generated HTML or React component.' : htmlExportNote}</p>
         </section>
       )}
 
       <div className="editor-workspace">
         <nav className="editor-selector" aria-label="Choose a component">
-          <div className="editor-panel-heading"><span>COMPONENTS</span><small>05</small></div>
+          <div className="editor-panel-heading"><span>COMPONENTS</span><small>{componentOptions.length.toString().padStart(2, '0')}</small></div>
           {componentOptions.map((component, index) => (
-            <button className={`component-choice${selected === component.id ? ' is-selected' : ''}`} type="button" key={component.id} aria-pressed={selected === component.id} onClick={() => setSelected(component.id)}>
-              <span className="component-choice-mark">{component.mark}</span><span className="component-choice-copy"><strong>{component.label}</strong><small>{component.description}</small></span><kbd>0{index + 1}</kbd>
+            <button className={`component-choice${selected === component.id ? ' is-selected' : ''}`} type="button" key={component.id} aria-pressed={selected === component.id} onClick={() => { setSelected(component.id); setModalOpen(false) }}>
+              <span className="component-choice-mark">{component.mark}</span><span className="component-choice-copy"><strong>{component.label}</strong><small>{component.description}</small></span><kbd>{String(index + 1).padStart(2, '0')}</kbd>
             </button>
           ))}
           <div className="selector-tip"><span>✳</span><p>Every control updates the preview as you explore.</p></div>
@@ -350,13 +510,26 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 }
 
 function NumberProperty({ label, value, onChange, min = -100000, max = 100000 }: { label: string; value: number; onChange: (value: number) => void; min?: number; max?: number }) {
+  const inputId = useId()
   return (
-    <label className="editor-property number-property">
-      <span>{label}</span>
-      <input type="number" min={min} max={max} step={1} value={value} onChange={(event) => {
-        const parsed = Number(event.target.value)
-        if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
-      }} />
-    </label>
+    <div className="editor-property number-property">
+      <label htmlFor={inputId}>{label}</label>
+      <div className="number-input-control">
+        <input id={inputId} type="number" min={min} max={max} step={1} value={value} onWheel={(event) => {
+          if (document.activeElement === event.currentTarget) event.currentTarget.blur()
+        }} onChange={(event) => {
+          const parsed = Number(event.target.value)
+          if (Number.isFinite(parsed)) onChange(Math.min(max, Math.max(min, parsed)))
+        }} />
+        <div className="number-stepper" aria-label={`${label} controls`}>
+          <button type="button" aria-label={`Increase ${label}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 7.5 3-3 3 3" /></svg>
+          </button>
+          <button type="button" aria-label={`Decrease ${label}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

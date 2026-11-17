@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="32" viewBox="0 0 108 32" fill="none">
+  <defs>
+    <linearGradient id="brand-mark-gradient" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a693f7" />
+      <stop offset=".62" stop-color="#6655b9" />
+      <stop offset="1" stop-color="#39315e" />
+    </linearGradient>
+    <linearGradient id="brand-mark-inset" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".3" />
+      <stop offset=".24" stop-color="#fff" stop-opacity="0" />
+    </linearGradient>
+    <clipPath id="brand-mark-clip">
+      <rect x="0" y="4.5" width="23" height="23" rx="8" />
+    </clipPath>
+    <filter id="brand-mark-glow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="4" />
+    </filter>
+  </defs>
+
+  <g transform="rotate(-4 11.5 16)">
+    <rect x="1" y="5" width="21" height="21" rx="7.5" fill="#8d78ef" opacity=".24" filter="url(#brand-mark-glow)" />
+    <rect x="0" y="4.5" width="23" height="23" rx="8" fill="url(#brand-mark-gradient)" stroke="#beaefd" stroke-opacity=".36" />
+    <rect x="0" y="4.5" width="23" height="23" fill="url(#brand-mark-inset)" clip-path="url(#brand-mark-clip)" />
+    <rect x="7.5" y="12" width="8" height="8" rx="2.2" fill="none" stroke="#fff" stroke-width="1.5" transform="rotate(4 11.5 16)" />
+  </g>
+
+  <text x="33" y="21" fill="#e9e8ef" font-family="'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="650" letter-spacing="-.45">interface</text>
+  <text x="86" y="21" fill="#a997f5" font-family="'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="450" letter-spacing="-.45">lab</text>
+</svg>
