@@ -12,6 +12,7 @@ import { loadStoredCustomFonts } from '../src/features/tokens/customFontStorage.
 import { defaultDesignTokens } from '../src/features/tokens/tokenDefaults.ts'
 import { designTokensToCss } from '../src/features/tokens/tokenCss.ts'
 import { generateTypographyFontCss } from '../src/features/tokens/typographyExport.ts'
+import { getNextOverviewHeadlineIndex, overviewHeadlines } from '../src/features/dashboard/overviewHeadlines.ts'
 
 const components = ['button', 'card', 'input', 'toggle', 'slider', 'badge', 'select', 'modal', 'tooltip', 'tabs']
 const exportClasses = {
@@ -460,6 +461,28 @@ test('static fonts with no shared weight range are identified instead of silentl
   const display = { id: 'display-static', name: 'Display Static', cssFamily: '"Display Static", sans-serif', weights: { kind: 'static', values: [700] } }
   const domain = getFontWeightDomain(body.cssFamily, display.cssFamily, [body, display])
   assert.equal(domain.compatible, false)
+})
+
+test('Overview headline sequence is curated, deterministic, and wraps to its first phrase', () => {
+  assert.equal(overviewHeadlines.length, 8)
+  assert.equal(overviewHeadlines[0], 'Let’s make something.')
+  assert.equal(getNextOverviewHeadlineIndex(0), 1)
+  assert.equal(getNextOverviewHeadlineIndex(overviewHeadlines.length - 1), 0)
+})
+
+test('interactive text selection and carets use the active workspace accent while the token preview stays scoped', () => {
+  const globalCss = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
+  const appCss = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
+  const fontPickerCss = readFileSync(new URL('../src/features/tokens/FontPicker.css', import.meta.url), 'utf8')
+  const tokenCss = readFileSync(new URL('../src/features/tokens/TokenStudio.css', import.meta.url), 'utf8')
+
+  assert.match(globalCss, /::selection\s*\{[^}]*background:\s*var\(--color-accent-soft\)/)
+  assert.match(globalCss, /caret-color:\s*var\(--color-accent\)/)
+  assert.doesNotMatch(appCss, /\.field-demo > input:focus[^}]*rgb\(169 151 245/)
+  assert.match(appCss, /\.field-demo > input:focus[^}]*var\(--color-accent-border\)/)
+  assert.match(fontPickerCss, /\.font-picker-search-wrap:focus-within[^}]*var\(--color-accent-soft\)/)
+  assert.match(fontPickerCss, /\.font-picker-custom input:focus[^}]*var\(--color-accent-border\)/)
+  assert.match(tokenCss, /\.token-preview ::selection[^}]*var\(--preview-color-accent-soft\)/)
 })
 
 test('separate uploaded static files for one family combine only their declared weights', () => {

@@ -111,7 +111,8 @@ body { min-width: 320px; min-height: 100vh; margin: 0; }
 body,button { font-family: var(--font-body); }
 button,a { -webkit-tap-highlight-color: transparent; }
 button:focus-visible,a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-::selection { color: #fff; background: rgb(143 122 224 / 42%); }
+::selection { color: var(--color-text); background: var(--color-accent-soft); }
+input[type='text'],input[type='search'],input[type='email'],input[type='number'],input:not([type]),textarea,[contenteditable='true'] { caret-color: var(--color-accent); }
 
 #root { min-height: 100vh; }
 

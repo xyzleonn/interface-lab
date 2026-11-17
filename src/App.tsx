@@ -3,12 +3,14 @@ import { ColorPickerField } from './components/ui/ColorPickerField'
 import { useCardParallax } from './hooks/useCardParallax'
 import { VisualComponentEditor } from './features/playground/VisualComponentEditor'
 import { TokenStudio } from './features/tokens/TokenStudio'
+import { getNextOverviewHeadlineIndex, overviewHeadlines } from './features/dashboard/overviewHeadlines'
 import { getAppearancePreviewVariables } from './features/tokens/appearancePreview'
 import { getDesignTokenVariables } from './features/tokens/tokenCss'
 import { useCustomFonts } from './features/tokens/useCustomFonts'
 import { loadDesignTokens, saveDesignTokens } from './features/tokens/tokenStorage'
 import type { DesignTokens } from './features/tokens/tokenTypes'
 import { normalizeColorHex } from './utils/colors'
+import { ACCENT_PRESETS, DEFAULT_ACCENT, deriveAccent, getAccentCssVariables, type AccentPresetId } from './utils/accent'
 import { normalizeDesignTokens } from './features/tokens/tokenDefaults'
 import './App.css'
 
@@ -45,7 +47,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 
 type PageId = 'overview' | 'theme-studio' | 'token-studio' | 'playground' | 'settings'
 type ThemeMode = 'dark' | 'light'
-type AccentId = 'lavender' | 'ocean' | 'mint' | 'rose' | 'amber' | 'custom'
+type AccentId = AccentPresetId | 'custom'
 type ThemeSettings = { mode: ThemeMode; accent: AccentId; customColor: string }
 type ThemeActivity = { id: number; kind: 'appearance' | 'accent'; title: string; detail: string; time: string }
 type ApplicationPreferences = {
@@ -57,31 +59,8 @@ type ApplicationPreferences = {
 
 const themeStorageKey = 'interface-lab-theme'
 const preferencesStorageKey = 'interface-lab-preferences'
-const defaultAccent = '#a997f5'
-const accentOptions: { id: Exclude<AccentId, 'custom'>; label: string; color: string }[] = [
-  { id: 'lavender', label: 'Lavender', color: defaultAccent },
-  { id: 'ocean', label: 'Ocean blue', color: '#79b9f2' },
-  { id: 'mint', label: 'Soft mint', color: '#83d1ad' },
-  { id: 'rose', label: 'Rose pink', color: '#ed91b2' },
-  { id: 'amber', label: 'Warm amber', color: '#eab66f' },
-]
-
-function deriveAccent(color: string) {
-  const normalized = normalizeColorHex(color) ?? defaultAccent
-  const channels = normalized.slice(1).match(/.{2}/g)?.map((channel) => Number.parseInt(channel, 16)) ?? [169, 151, 245]
-  const [red, green, blue] = channels
-  const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
-  const hoverChannels = channels.map((channel) => Math.round(channel + ((luminance < 0.52 ? 255 : 0) - channel) * 0.12))
-  const hover = `#${hoverChannels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
-  return {
-    color: normalized,
-    hover,
-    soft: `rgb(${red} ${green} ${blue} / 14%)`,
-    border: `rgb(${red} ${green} ${blue} / 48%)`,
-    glow: `rgb(${red} ${green} ${blue} / 24%)`,
-    contrast: luminance < 0.52 ? '#ffffff' : '#191722',
-  }
-}
+const defaultAccent = DEFAULT_ACCENT
+const accentOptions = ACCENT_PRESETS
 
 function loadThemeSettings(): ThemeSettings {
   try {
@@ -488,15 +467,7 @@ function App() {
 
   useEffect(() => {
     const root = document.documentElement
-    const accent = accentOptions.find((option) => option.id === themeSettings.accent) ?? accentOptions[0]
     root.dataset.theme = themeSettings.mode
-    const activeAccent = themeSettings.accent === 'custom' ? deriveAccent(themeSettings.customColor) : deriveAccent(accent.color)
-    root.style.setProperty('--color-accent', activeAccent.color)
-    root.style.setProperty('--color-accent-hover', activeAccent.hover)
-    root.style.setProperty('--color-accent-soft', activeAccent.soft)
-    root.style.setProperty('--color-accent-border', activeAccent.border)
-    root.style.setProperty('--color-accent-glow', activeAccent.glow)
-    root.style.setProperty('--color-accent-contrast', activeAccent.contrast)
     try {
       localStorage.setItem(themeStorageKey, JSON.stringify(themeSettings))
     } catch {
@@ -509,13 +480,11 @@ function App() {
     const accentColor = themeSettings.accent === 'custom'
       ? themeSettings.customColor
       : accentOptions.find((option) => option.id === themeSettings.accent)?.color ?? defaultAccent
-    const accent = deriveAccent(accentColor)
-    Object.entries(getDesignTokenVariables(appliedTokens, themeSettings.mode, accent.color)).forEach(([name, value]) => root.style.setProperty(name, value))
-    root.style.setProperty('--color-accent-hover', accent.hover)
-    root.style.setProperty('--color-accent-soft', accent.soft)
-    root.style.setProperty('--color-accent-border', accent.border)
-    root.style.setProperty('--color-accent-glow', accent.glow)
-    root.style.setProperty('--color-accent-contrast', accent.contrast)
+    const appliedVariables = {
+      ...getDesignTokenVariables(appliedTokens, themeSettings.mode, accentColor),
+      ...getAccentCssVariables(accentColor),
+    }
+    Object.entries(appliedVariables).forEach(([name, value]) => root.style.setProperty(name, value))
     saveDesignTokens(appliedTokens)
   }, [appliedTokens, themeSettings.accent, themeSettings.customColor, themeSettings.mode])
 
@@ -596,25 +565,46 @@ function App() {
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} tokens={appliedTokens} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} fontLibrary={customFontLibrary} protectedFontStacks={protectedFontStacks} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} motionEnabled={preferences.animationsEnabled && !preferences.reducedMotion} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} tokens={appliedTokens} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} fontLibrary={customFontLibrary} protectedFontStacks={protectedFontStacks} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )
 }
 
-function OverviewPage({ settings, activity }: { settings: ThemeSettings; activity: ThemeActivity[] }) {
+function OverviewPage({ settings, activity, motionEnabled }: { settings: ThemeSettings; activity: ThemeActivity[]; motionEnabled: boolean }) {
+  const [headlineIndex, setHeadlineIndex] = useState(0)
   const accent = settings.accent === 'custom'
     ? settings.customColor
     : accentOptions.find((option) => option.id === settings.accent)?.color ?? defaultAccent
   const appearanceChanges = activity.filter((item) => item.kind === 'appearance').length
   const accentChanges = activity.filter((item) => item.kind === 'accent').length
 
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let interval: number | undefined
+    const syncMotion = () => {
+      if (interval !== undefined) window.clearInterval(interval)
+      interval = undefined
+      if (!motionEnabled || reducedMotion.matches) return
+      interval = window.setInterval(() => {
+        setHeadlineIndex(getNextOverviewHeadlineIndex)
+      }, 4500)
+    }
+
+    syncMotion()
+    reducedMotion.addEventListener('change', syncMotion)
+    return () => {
+      if (interval !== undefined) window.clearInterval(interval)
+      reducedMotion.removeEventListener('change', syncMotion)
+    }
+  }, [motionEnabled])
+
   return (
     <div className="dashboard-page">
       <section className="dashboard-welcome" aria-labelledby="welcome-title">
         <div>
           <div className="eyebrow"><span className="eyebrow-dot" /> YOUR CREATIVE WORKSPACE</div>
-          <h1 id="welcome-title">{getGreeting()},<br /><span>let’s make something.</span></h1>
+          <h1 id="welcome-title">{getGreeting()},<br /><span className="dashboard-headline-track">{overviewHeadlines.map((headline, index) => <span key={headline} className={index === headlineIndex ? 'is-current' : ''} aria-hidden={index !== headlineIndex}>{headline}</span>)}</span></h1>
           <p>A little space to explore ideas, tune the details, and build interfaces that feel like you.</p>
         </div>
         <div className="welcome-orbit" aria-hidden="true"><div className="welcome-orbit-dots"><i /><i /><i /></div><span>✳</span></div>

@@ -4,7 +4,6 @@
 .visual-editor-intro .eyebrow { margin-bottom: 14px; }
 .visual-editor-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .visual-editor-title-row h1 { font-size: var(--text-heading); }
-.visual-editor-title-row h1 span { color: #9189a9; }
 .visual-editor-title-row p { margin: 12px 0 0; color: #92929f; font-size: 11px; line-height: 1.65; }
 .editor-action-group { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
 .editor-action-button,.copy-css-button,.editor-form-save,.editor-form-cancel,.load-preset-button,.presets-empty button { min-height: var(--button-height); padding: 0 11px; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); background: rgb(255 255 255 / 3%); color: #cfced9; font: inherit; font-size: var(--text-label); font-weight: var(--font-weight-medium); white-space: nowrap; cursor: pointer; transition: border-color var(--transition-fast),background var(--transition-fast),color var(--transition-fast),transform var(--transition-fast); }

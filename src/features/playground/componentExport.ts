@@ -217,7 +217,7 @@ function getInputCss(input: EditorSettings['input']) {
   font-size: ${style.fontSize}px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
-.il-export-input:focus { border-color: var(--color-accent-border, #a997f5); box-shadow: 0 0 0 3px var(--color-accent-soft, rgb(169 151 245 / 14%)); }
+.il-export-input:focus { border-color: var(--color-accent-border); box-shadow: 0 0 0 3px var(--color-accent-soft); }
 .il-export-input::placeholder { color: var(--color-text-dim, #737480); }
 .il-export-input:disabled { opacity: .55; cursor: not-allowed;}
 .il-export-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;}`

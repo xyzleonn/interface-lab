@@ -3,7 +3,6 @@
 .token-studio-intro .eyebrow { margin-bottom: 14px; }
 .token-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .token-title-row h1 { font-size: var(--text-heading); }
-.token-title-row h1 span { color: #9189a9; }
 .token-title-row p { max-width: 620px; margin: 13px 0 0; color: var(--color-text-muted); font-size: var(--font-size-md); line-height: var(--line-height-body); }
 .token-draft-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; padding: 15px 17px; border: var(--border-width) solid var(--color-border-soft); border-radius: var(--radius-md); background: color-mix(in srgb,var(--color-surface-raised) 78%,transparent); backdrop-filter: blur(14px); }
 .token-draft-status { display: grid; grid-template-columns: 9px auto; align-items: center; column-gap: 9px; color: var(--color-text); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
@@ -23,6 +22,7 @@
 .token-export-actions > button:disabled { cursor: not-allowed; opacity: .55; }
 .token-section,.token-presets-section,.token-export-section { border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); background: linear-gradient(145deg,rgb(25 26 34 / 82%),rgb(20 21 28 / 91%)); box-shadow: var(--shadow-card); }
 .token-preview { margin-top: 20px; padding: clamp(20px,1.7vw,30px); border: var(--preview-border-width) solid var(--preview-color-border); border-radius: var(--preview-radius-lg); color: var(--preview-color-text); background: radial-gradient(ellipse at 82% 0,var(--preview-color-accent-soft),transparent 48%),var(--preview-color-canvas); box-shadow: var(--preview-shadow-card); font-family: var(--preview-font-body); font-size: var(--preview-font-size-md); line-height: var(--preview-line-height-body); }
+.token-preview ::selection { color: var(--preview-color-text); background: var(--preview-color-accent-soft); }
 .token-preview-heading,.token-export-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .token-preview-heading h2 { margin: 5px 0 0; color: var(--preview-color-text); font-size: var(--preview-font-size-lg); font-weight: var(--preview-font-weight-medium); letter-spacing: var(--preview-letter-spacing-heading); }
 .token-preview-heading .dashboard-card-label { color: var(--preview-color-text-muted); font-size: var(--preview-font-size-xs); }
