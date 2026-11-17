@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import test, { beforeEach } from 'node:test'
 import { generateComponentCss, generateComponentHtml, generateComponentTsx, getSafeTabsLabels } from '../src/features/playground/componentExport.ts'
 import { loadPresets, savePresets } from '../src/features/playground/presetStorage.ts'
 import { getAppearancePreviewVariables } from '../src/features/tokens/appearancePreview.ts'
+import { createFontFingerprint, extractFontMetadata, fontStackUsesFamily, hasDuplicateFingerprint, makeCustomCssFamily, validateFontFile, validateFontSignature } from '../src/features/tokens/customFontFiles.ts'
+import { adjustTypographyWeights, findFontByStack, FONT_CATALOG, getFontWeightDomain, nearestSupportedWeight, searchFonts, updateTypographyFont } from '../src/features/tokens/fontCatalog.ts'
+import { loadStoredCustomFonts } from '../src/features/tokens/customFontStorage.ts'
+import { defaultDesignTokens } from '../src/features/tokens/tokenDefaults.ts'
+import { designTokensToCss } from '../src/features/tokens/tokenCss.ts'
+import { generateTypographyFontCss } from '../src/features/tokens/typographyExport.ts'
 
 const components = ['button', 'card', 'input', 'toggle', 'slider', 'badge', 'select', 'modal', 'tooltip', 'tabs']
 const exportClasses = {
@@ -188,4 +194,281 @@ test('Theme Studio appearance previews use the applied mode palettes', () => {
     '--appearance-preview-text': '#252431',
     '--appearance-preview-muted': '#5e5d6a',
   })
+})
+
+test('font catalog entries include family, category, source, license, and real weight metadata', () => {
+  assert.deepEqual(FONT_CATALOG.map((font) => font.name), ['Inter', 'DM Sans', 'Manrope'])
+  for (const font of FONT_CATALOG) {
+    assert.ok(font.name)
+    assert.ok(font.cssFamily.includes(font.name))
+    assert.ok(font.source)
+    assert.ok(font.licenseSource)
+    assert.equal(font.license, 'SIL Open Font License 1.1')
+    assert.ok(['self-hosted', 'existing-remote'].includes(font.assetStatus))
+    if (font.weights.kind === 'static') assert.ok(font.weights.values.length > 0)
+    else assert.ok(font.weights.min < font.weights.max)
+  }
+  assert.deepEqual(FONT_CATALOG.filter((font) => font.assetStatus === 'self-hosted').map((font) => font.id), ['inter', 'dm-sans'])
+  assert.deepEqual(FONT_CATALOG.find((font) => font.id === 'manrope').weights, { kind: 'static', values: [400, 500, 600, 700] })
+})
+
+test('self-hosted catalog fonts map to licensed local variable font assets and CSS registrations', () => {
+  const dmSansAsset = new URL('../public/fonts/dm-sans-variable.woff2', import.meta.url)
+  const interAsset = new URL('../public/fonts/inter-variable.woff2', import.meta.url)
+  const dmSansLicense = new URL('../public/fonts/OFL-DM-Sans.txt', import.meta.url)
+  const interLicense = new URL('../public/fonts/OFL-Inter.txt', import.meta.url)
+  const globalStyles = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
+
+  assert.ok(existsSync(dmSansAsset))
+  assert.ok(existsSync(interAsset))
+  assert.match(readFileSync(dmSansLicense, 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/)
+  assert.match(readFileSync(interLicense, 'utf8'), /Copyright \(c\) 2016 The Inter Project Authors/)
+  assert.match(globalStyles, /font-family:\s*'DM Sans'[\s\S]*?url\('\/fonts\/dm-sans-variable\.woff2'\)/)
+  assert.match(globalStyles, /font-family:\s*'Inter'[\s\S]*?url\('\/fonts\/inter-variable\.woff2'\)/)
+  assert.match(globalStyles, /fonts\.googleapis\.com\/css2\?family=Manrope:wght@400;500;600;700/)
+})
+
+test('font search and category filtering return the expected catalog entries', () => {
+  assert.deepEqual(searchFonts('inter'), [FONT_CATALOG.find((font) => font.id === 'inter')])
+  assert.ok(searchFonts('', 'sans-serif').every((font) => font.category === 'sans-serif'))
+  assert.deepEqual(searchFonts('', 'serif'), [])
+  assert.deepEqual(searchFonts('', 'monospace'), [])
+  assert.deepEqual(searchFonts('not a font'), [])
+})
+
+test('Body and Display font selections update independently and preserve typography settings', () => {
+  const tokens = { typography: { fontBody: 'Existing Body, sans-serif', fontDisplay: 'Existing Display, serif', sizeMd: 17, weightNormal: 400, weightMedium: 550, weightStrong: 650, lineHeightBody: 1.6 } }
+  const bodyFont = findFontByStack(FONT_CATALOG.find((font) => font.id === 'inter').cssFamily)
+  const afterBody = updateTypographyFont(tokens, 'body', bodyFont.cssFamily)
+  assert.equal(afterBody.typography.fontBody, bodyFont.cssFamily)
+  assert.equal(afterBody.typography.fontDisplay, tokens.typography.fontDisplay)
+  assert.equal(afterBody.typography.sizeMd, 17)
+
+  const manropeFont = FONT_CATALOG.find((font) => font.id === 'manrope')
+  const afterDisplay = updateTypographyFont(afterBody, 'display', manropeFont.cssFamily)
+  assert.equal(afterDisplay.typography.fontDisplay, manropeFont.cssFamily)
+  assert.equal(afterDisplay.typography.fontBody, bodyFont.cssFamily)
+  assert.equal(afterDisplay.typography.weightMedium, 550)
+  assert.equal(afterDisplay.typography.lineHeightBody, 1.6)
+})
+
+test('unsupported font weights are clamped to the nearest available face', () => {
+  const staticAvailability = { kind: 'static', values: [400, 700] }
+  assert.equal(nearestSupportedWeight(550, staticAvailability), 400)
+  assert.equal(nearestSupportedWeight(720, staticAvailability), 700)
+  assert.equal(nearestSupportedWeight(900, { kind: 'variable', min: 200, max: 800 }), 800)
+
+  const tokens = { typography: { weightNormal: 300, weightMedium: 550, weightStrong: 900, fontBody: 'body', fontDisplay: 'display' } }
+  const adjusted = adjustTypographyWeights(tokens, staticAvailability)
+  assert.deepEqual([adjusted.typography.weightNormal, adjusted.typography.weightMedium, adjusted.typography.weightStrong], [400, 400, 700])
+  assert.equal(adjusted.typography.fontBody, 'body')
+  assert.equal(adjusted.typography.fontDisplay, 'display')
+})
+
+test('custom font file validation accepts supported extensions and compatible MIME types', () => {
+  assert.deepEqual(validateFontFile({ name: 'studio.woff2', type: 'font/woff2', size: 1024 }), { ok: true, format: 'woff2' })
+  assert.deepEqual(validateFontFile({ name: 'studio.woff', type: 'font/woff', size: 1024 }), { ok: true, format: 'woff' })
+  assert.deepEqual(validateFontFile({ name: 'studio.ttf', type: 'application/octet-stream', size: 1024 }), { ok: true, format: 'ttf' })
+  assert.deepEqual(validateFontFile({ name: 'studio.otf', type: 'font/otf', size: 1024 }), { ok: true, format: 'otf' })
+  assert.equal(validateFontFile({ name: 'image.png', type: 'image/png', size: 1024 }).ok, false)
+  assert.equal(validateFontFile({ name: 'studio.otf', type: 'font/woff', size: 1024 }).ok, false)
+  assert.equal(validateFontSignature(new Uint8Array([0x77, 0x4f, 0x46, 0x32]), 'woff2'), true)
+  assert.equal(validateFontSignature(new Uint8Array([0x77, 0x4f, 0x46, 0x46]), 'woff'), true)
+  assert.equal(validateFontSignature(new Uint8Array([0, 1, 0, 0]), 'ttf'), true)
+  assert.equal(validateFontSignature(new Uint8Array([0x4f, 0x54, 0x54, 0x4f]), 'otf'), true)
+  assert.equal(validateFontSignature(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), 'woff2'), false)
+})
+
+test('custom font validation enforces the 10 MB limit and rejects empty files', () => {
+  assert.equal(validateFontFile({ name: 'large.woff2', type: '', size: 10 * 1024 * 1024 }).ok, true)
+  assert.match(validateFontFile({ name: 'too-large.woff2', type: '', size: 10 * 1024 * 1024 + 1 }).message, /10 MB/)
+  assert.match(validateFontFile({ name: 'empty.ttf', type: '', size: 0 }).message, /empty/)
+})
+
+test('font metadata extraction reads actual family, style and variable weight axes from SFNT tables', async () => {
+  const stringBytes = (text) => Uint8Array.from([...text].flatMap((character) => [0, character.charCodeAt(0)]))
+  const family = stringBytes('Kite Sans')
+  const style = stringBytes('Regular')
+  const name = new Uint8Array(30 + family.length + style.length)
+  const nameView = new DataView(name.buffer)
+  nameView.setUint16(0, 0)
+  nameView.setUint16(2, 2)
+  nameView.setUint16(4, 30)
+  for (const [index, nameId, text, textOffset] of [[0, 1, family, 0], [1, 2, style, family.length]]) {
+    const offset = 6 + index * 12
+    nameView.setUint16(offset, 3)
+    nameView.setUint16(offset + 2, 1)
+    nameView.setUint16(offset + 4, 0x409)
+    nameView.setUint16(offset + 6, nameId)
+    nameView.setUint16(offset + 8, text.length)
+    nameView.setUint16(offset + 10, textOffset)
+    name.set(text, 30 + textOffset)
+  }
+  const os2 = new Uint8Array(6)
+  new DataView(os2.buffer).setUint16(4, 400)
+  const fvar = new Uint8Array(36)
+  const fvarView = new DataView(fvar.buffer)
+  fvarView.setUint16(4, 16)
+  fvarView.setUint16(8, 1)
+  fvarView.setUint16(10, 20)
+  fvar.set([119, 103, 104, 116], 16)
+  fvarView.setInt32(20, 100 * 65536)
+  fvarView.setInt32(24, 400 * 65536)
+  fvarView.setInt32(28, 900 * 65536)
+  const tables = new Map([['name', name], ['OS/2', os2], ['fvar', fvar]])
+  const tableCount = tables.size
+  let tableOffset = 12 + tableCount * 16
+  const sfnt = new Uint8Array(tableOffset + [...tables.values()].reduce((sum, table) => sum + table.length + (table.length % 4), 0))
+  const view = new DataView(sfnt.buffer)
+  sfnt.set([0, 1, 0, 0])
+  view.setUint16(4, tableCount)
+  let index = 0
+  for (const [tag, table] of tables) {
+    const recordOffset = 12 + index * 16
+    sfnt.set([...tag].map((character) => character.charCodeAt(0)), recordOffset)
+    view.setUint32(recordOffset + 8, tableOffset)
+    view.setUint32(recordOffset + 12, table.length)
+    sfnt.set(table, tableOffset)
+    tableOffset += table.length + (table.length % 4)
+    index += 1
+  }
+
+  const metadata = await extractFontMetadata(sfnt.buffer, 'ttf')
+  assert.deepEqual(metadata, { family: 'Kite Sans', style: 'normal', weights: { kind: 'variable', min: 100, max: 900 } })
+})
+
+test('custom font duplicate fingerprints are detected without relying on filenames', async () => {
+  const bytes = new Uint8Array([1, 2, 3, 4]).buffer
+  const first = await createFontFingerprint(bytes, { name: 'first.ttf', type: '', size: 4 })
+  const sameBytes = await createFontFingerprint(bytes.slice(0), { name: 'renamed.otf', type: '', size: 4 })
+  assert.equal(first, sameBytes)
+  assert.equal(hasDuplicateFingerprint(sameBytes, [first]), true)
+  assert.equal(hasDuplicateFingerprint('different', [first]), false)
+})
+
+test('custom font CSS family escaping and usage checks preserve safely quoted names', () => {
+  const cssFamily = makeCustomCssFamily('Studio "Display"')
+  assert.equal(cssFamily, '"Studio \\"Display\\"", "DM Sans", sans-serif')
+  assert.equal(fontStackUsesFamily(cssFamily, 'Studio "Display"'), true)
+  assert.equal(fontStackUsesFamily('Inter, "Studio Display", sans-serif', 'Studio Display'), true)
+  assert.equal(fontStackUsesFamily('Inter, "DM Sans", sans-serif', 'Studio Display'), false)
+})
+
+test('unsupported WOFF2 metadata parsing is reported as unavailable for manual entry', async () => {
+  const woff2 = Uint8Array.from([0x77, 0x4f, 0x46, 0x32]).buffer
+  assert.equal(await extractFontMetadata(woff2, 'woff2'), null)
+  assert.equal(validateFontFile({ name: 'custom.woff2', type: 'font/woff2', size: 4 }).format, 'woff2')
+})
+
+test('custom font storage fails gracefully when IndexedDB is unavailable', async () => {
+  await assert.rejects(loadStoredCustomFonts(), /not available/)
+})
+
+test('variable font exports preserve the real continuous range and font-display behavior', async () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  const font = FONT_CATALOG.find((entry) => entry.id === 'inter')
+  tokens.typography.fontBody = font.cssFamily
+  let requests = 0
+  const css = await generateTypographyFontCss(tokens.typography, [font], [], async () => {
+    requests += 1
+    return new Blob([new Uint8Array([0, 1, 2, 3])])
+  })
+
+  assert.equal(requests, 1)
+  assert.match(css, /font-weight: 100 900;/)
+  assert.match(css, /font-display: swap;/)
+  assert.match(css, /format\("woff2"\)/)
+  assert.doesNotMatch(css, /font-weight: 400;/)
+})
+
+test('static uploaded font export uses only its declared weight and safely embeds its asset', async () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  const custom = {
+    id: 'custom-studio', name: 'Studio Sans', category: 'custom',
+    cssFamily: '"Studio Sans", "DM Sans", sans-serif', weights: { kind: 'static', values: [600] },
+    source: 'IndexedDB custom upload', assetStatus: 'custom', customFontId: 'studio-id', style: 'normal',
+  }
+  tokens.typography.fontBody = custom.cssFamily
+  const css = await generateTypographyFontCss(tokens.typography, [custom], [{
+    loaded: true,
+    record: { id: 'studio-id', family: 'Studio Sans', fileName: 'Studio */ Sans.woff2', format: 'woff2', style: 'normal', weights: custom.weights, blob: new Blob([new Uint8Array([1, 2, 3])]) },
+  }])
+
+  assert.match(css, /font-family: "Studio Sans";/)
+  assert.match(css, /font-weight: 600;/)
+  assert.match(css, /data:font\/woff2;base64,AQID/)
+  assert.match(css, /Font asset: Studio \* \/ Sans\.woff2/)
+  assert.doesNotMatch(css, /url\("IndexedDB custom upload/)
+})
+
+test('font CSS deduplicates a selected font used by Body and Display', async () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  tokens.typography.fontDisplay = tokens.typography.fontBody
+  let requests = 0
+  const css = await generateTypographyFontCss(tokens.typography, [FONT_CATALOG[1]], [], async () => {
+    requests += 1
+    return new Blob([new Uint8Array([1])])
+  })
+  assert.equal(requests, 1)
+  assert.equal((css.match(/@font-face/g) ?? []).length, 1)
+})
+
+test('missing selected uploaded font assets fail export instead of emitting broken URLs', async () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  const custom = {
+    id: 'custom-studio', name: 'Studio Sans', category: 'custom', cssFamily: '"Studio Sans", "DM Sans", sans-serif',
+    weights: { kind: 'static', values: [400] }, source: 'IndexedDB custom upload', assetStatus: 'custom', customFontId: 'missing-id', style: 'normal',
+  }
+  tokens.typography.fontDisplay = custom.cssFamily
+  await assert.rejects(generateTypographyFontCss(tokens.typography, [custom], []), /selected custom font.*unavailable/i)
+})
+
+test('Body and Display token updates stay independent and CSS preserves their fallback stacks', () => {
+  const original = structuredClone(defaultDesignTokens)
+  const bodyOnly = updateTypographyFont(original, 'body', FONT_CATALOG[0].cssFamily)
+  assert.equal(bodyOnly.typography.fontBody, FONT_CATALOG[0].cssFamily)
+  assert.equal(bodyOnly.typography.fontDisplay, original.typography.fontDisplay)
+  const css = designTokensToCss(bodyOnly, 'dark', '#a997f5')
+  assert.match(css, /--font-body: 'Inter', 'DM Sans', ui-sans-serif, system-ui, sans-serif;/)
+  assert.match(css, /--font-display: 'Manrope', 'DM Sans', ui-sans-serif, system-ui, sans-serif;/)
+  assert.match(css, /:where\(body\)[\s\S]*font-family: var\(--font-body\)/)
+  assert.match(css, /:where\(h1, h2, h3, h4, h5, h6\)[\s\S]*font-family: var\(--font-display\)/)
+})
+
+test('Playground HTML, TSX and CSS remain compatible with exported typography tokens', () => {
+  const settings = createSettings()
+  const tokenCss = designTokensToCss(defaultDesignTokens, 'dark', '#a997f5')
+  const componentCss = generateComponentCss('modal', settings)
+  const componentHtml = generateComponentHtml('modal', settings)
+  const componentTsx = generateComponentTsx('modal', settings)
+  assert.match(tokenCss, /--font-display:/)
+  assert.match(componentCss, /font-family: var\(--font-display, sans-serif\)/)
+  assert.match(componentHtml, /class="il-export-modal__title"/)
+  assert.match(componentTsx, /il-export-modal__title/)
+})
+
+test('remote font export is explicit and static weight normalization stays within available choices', async () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  tokens.typography.fontBody = FONT_CATALOG.find((entry) => entry.id === 'manrope').cssFamily
+  const css = await generateTypographyFontCss(tokens.typography, FONT_CATALOG, [], async () => new Blob([new Uint8Array([1])]))
+  assert.match(css, /@import url\("https:\/\/fonts\.googleapis\.com\/css2\?family=Manrope/)
+  assert.equal(nearestSupportedWeight(650, { kind: 'static', values: [400, 500, 700] }), 700)
+})
+
+test('static fonts with no shared weight range are identified instead of silently inventing weights', () => {
+  const body = { id: 'body-static', name: 'Body Static', cssFamily: '"Body Static", sans-serif', weights: { kind: 'static', values: [400] } }
+  const display = { id: 'display-static', name: 'Display Static', cssFamily: '"Display Static", sans-serif', weights: { kind: 'static', values: [700] } }
+  const domain = getFontWeightDomain(body.cssFamily, display.cssFamily, [body, display])
+  assert.equal(domain.compatible, false)
+})
+
+test('separate uploaded static files for one family combine only their declared weights', () => {
+  const stack = '"Studio Family", "DM Sans", sans-serif'
+  const familyFiles = [400, 700].map((weight) => ({
+    id: `studio-${weight}`, name: 'Studio Family', cssFamily: stack, assetStatus: 'custom',
+    weights: { kind: 'static', values: [weight] },
+  }))
+  const domain = getFontWeightDomain(stack, stack, familyFiles)
+  assert.deepEqual(domain.values, [400, 700])
+  assert.equal(domain.compatible, true)
 })

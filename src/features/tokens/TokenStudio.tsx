@@ -1,8 +1,12 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { ColorPickerField } from '../../components/ui/ColorPickerField'
 import { RangeSlider } from '../../components/ui/RangeSlider'
+import { FontPicker } from './FontPicker'
+import { adjustTypographyWeights, FONT_CATALOG, getFontWeightDomain, normalizeWeightToDomain, updateTypographyFont, type FontCatalogEntry } from './fontCatalog'
+import type { CustomFontLibrary } from './useCustomFonts'
 import { defaultDesignTokens, normalizeDesignTokens, safeFontFamily } from './tokenDefaults'
 import { designTokensToCss, getPreviewTokenVariables } from './tokenCss'
+import { generateTypographyFontCss } from './typographyExport'
 import { loadTokenPresets, saveTokenPresets } from './tokenStorage'
 import type { DesignTokens, TokenPreset } from './tokenTypes'
 import './TokenStudio.css'
@@ -17,20 +21,11 @@ function TokenColorField({ label, value, onChange, onReset }: { label: string; v
   )
 }
 
-function TokenNumberField({ label, value, min, max, step = 1, unit = 'px', onChange, onReset }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void; onReset: () => void }) {
+function TokenNumberField({ label, value, min, max, step = 1, unit = 'px', disabled = false, onChange, onReset }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; disabled?: boolean; onChange: (value: number) => void; onReset: () => void }) {
   return (
     <label className="token-number-field">
       <span>{label}<output>{value}{unit}</output></span>
-      <RangeSlider min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} aria-label={label} />
-      <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
-    </label>
-  )
-}
-
-function TokenTextField({ label, value, onChange, onReset }: { label: string; value: string; onChange: (value: string) => void; onReset: () => void }) {
-  return (
-    <label className="token-text-field">
-      <span>{label}</span><input value={value} maxLength={120} onChange={(event) => onChange(safeFontFamily(event.target.value, value))} />
+      <RangeSlider min={min} max={max} step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} aria-label={label} />
       <button type="button" aria-label={`Reset ${label}`} onClick={onReset}>↺</button>
     </label>
   )
@@ -40,7 +35,7 @@ function TokenSection({ number, title, description, children, className = '' }: 
   return <section className={`token-section ${className}`}><div className="token-section-heading"><span>{number}</span><div><h2>{title}</h2><p>{description}</p></div></div>{children}</section>
 }
 
-export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUnappliedChanges, onTokensChange, onAccentChange, onApply, onDiscard, onReset }: {
+export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUnappliedChanges, onTokensChange, onAccentChange, onApply, onDiscard, onReset, fontLibrary, protectedFontStacks }: {
   tokens: DesignTokens
   mode: 'dark' | 'light'
   accentColor: string
@@ -51,15 +46,24 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
   onApply: () => void
   onDiscard: () => void
   onReset: () => void
+  fontLibrary: CustomFontLibrary
+  protectedFontStacks: string[]
 }) {
   const [presets, setPresets] = useState<TokenPreset[]>(loadTokenPresets)
   const [presetName, setPresetName] = useState('')
   const [notice, setNotice] = useState('')
+  const [fontNotice, setFontNotice] = useState('')
   const [exportFormat, setExportFormat] = useState<'css' | 'json'>('css')
   const [copyNotice, setCopyNotice] = useState('')
+  const [fontExport, setFontExport] = useState<{ key: string; css: string; error: string; loading: boolean }>({ key: '', css: '', error: '', loading: true })
   const [previewToggle, setPreviewToggle] = useState(false)
   const palette = tokens.colors[mode]
-  const generatedCss = designTokensToCss(tokens, mode, accentColor)
+  const availableFonts = useMemo(() => [...FONT_CATALOG, ...fontLibrary.catalogEntries], [fontLibrary.catalogEntries])
+  const fontExportKey = `${tokens.typography.fontBody}\u0000${tokens.typography.fontDisplay}`
+  const fontWeightDomain = getFontWeightDomain(tokens.typography.fontBody, tokens.typography.fontDisplay, availableFonts)
+  const effectiveFontNotice = fontNotice || (fontWeightDomain.compatible === false ? 'These selected fonts have no supported weight in common. Choose a compatible pair before changing weight tokens.' : '')
+  const currentFontExport = fontExport.key === fontExportKey && !fontLibrary.isLoading ? fontExport : { key: fontExportKey, css: '', error: '', loading: true }
+  const generatedCss = designTokensToCss(tokens, mode, accentColor, currentFontExport.css)
   const generatedJson = JSON.stringify({ mode, accentColor, ...tokens }, null, 2)
   const generatedExport = exportFormat === 'css' ? generatedCss : generatedJson
   const previewVariables = {
@@ -70,6 +74,17 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
     '--preview-color-accent-glow': accentVariables.glow,
     '--preview-color-accent-contrast': accentVariables.contrast,
   } as CSSProperties
+
+  useEffect(() => {
+    let isCurrent = true
+    if (fontLibrary.isLoading) return () => { isCurrent = false }
+    void generateTypographyFontCss({ fontBody: tokens.typography.fontBody, fontDisplay: tokens.typography.fontDisplay }, availableFonts, fontLibrary.fonts).then((css) => {
+      if (isCurrent) setFontExport({ key: fontExportKey, css, error: '', loading: false })
+    }).catch((error: unknown) => {
+      if (isCurrent) setFontExport({ key: fontExportKey, css: '', error: error instanceof Error ? error.message : 'Font assets could not be prepared for export.', loading: false })
+    })
+    return () => { isCurrent = false }
+  }, [fontExportKey, tokens.typography.fontBody, tokens.typography.fontDisplay, availableFonts, fontLibrary.fonts, fontLibrary.isLoading])
 
   function updateColor(key: keyof DesignTokens['colors'], value: string) {
     if (key === 'dark' || key === 'light') return
@@ -83,6 +98,30 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
   function updateNumber(group: 'typography' | 'spacing' | 'shape' | 'effects', key: string, value: number) {
     const next = { ...tokens, [group]: { ...tokens[group], [key]: value } }
     onTokensChange(normalizeDesignTokens(next))
+  }
+
+  function updateFontStack(role: 'body' | 'display', cssFamily: string) {
+    const next = updateTypographyFont(tokens, role, safeFontFamily(cssFamily, role === 'body' ? tokens.typography.fontBody : tokens.typography.fontDisplay))
+    const nextDomain = getFontWeightDomain(next.typography.fontBody, next.typography.fontDisplay, availableFonts)
+    if (nextDomain.compatible === false) {
+      setFontNotice('These selected fonts have no supported weight in common. Keep a compatible pair so Regular, Medium, and Strong remain real font weights.')
+      return
+    }
+    onTokensChange(normalizeDesignTokens(adjustTypographyWeights(next, nextDomain)))
+    setFontNotice('')
+  }
+
+  function selectFont(role: 'body' | 'display', font: FontCatalogEntry) {
+    const next = updateTypographyFont(tokens, role, font.cssFamily)
+    const nextDomain = getFontWeightDomain(next.typography.fontBody, next.typography.fontDisplay, availableFonts)
+    if (nextDomain.compatible === false) {
+      setFontNotice(`${font.name} does not share a supported weight with the other selected font. Choose a font with overlapping weights.`)
+      return
+    }
+    const adjusted = normalizeDesignTokens(adjustTypographyWeights(next, nextDomain))
+    const weightChanged = (['weightNormal', 'weightMedium', 'weightStrong'] as const).some((key) => next.typography[key] !== adjusted.typography[key])
+    setFontNotice(weightChanged ? `Weight values were adjusted to weights shared by both selected fonts (${nextDomain.values?.join(', ') ?? `${nextDomain.min}–${nextDomain.max}`}).` : '')
+    onTokensChange(adjusted)
   }
 
   function resetNumber(group: 'typography' | 'spacing' | 'shape' | 'effects', key: string) {
@@ -128,6 +167,11 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
   }
 
   async function copyExport() {
+    if (exportFormat === 'css' && (currentFontExport.loading || currentFontExport.error)) {
+      setCopyNotice(currentFontExport.error ? 'Font export unavailable' : 'Preparing fonts…')
+      window.setTimeout(() => setCopyNotice(''), 1800)
+      return
+    }
     try {
       await navigator.clipboard.writeText(generatedExport)
       setCopyNotice('Copied')
@@ -135,6 +179,16 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
       setCopyNotice('Clipboard unavailable')
     }
     window.setTimeout(() => setCopyNotice(''), 1800)
+  }
+
+  function downloadCssExport() {
+    if (currentFontExport.loading || currentFontExport.error) return
+    const objectUrl = URL.createObjectURL(new Blob([generatedCss], { type: 'text/css;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = 'interface-lab-design-tokens.css'
+    link.click()
+    URL.revokeObjectURL(objectUrl)
   }
 
   return (
@@ -183,12 +237,13 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
 
         <TokenSection number="02" title="Typography" description="Tune type scale, weight, and rhythm.">
           <div className="token-font-fields">
-            <TokenTextField label="Body font stack" value={tokens.typography.fontBody} onChange={(fontBody) => onTokensChange({ ...tokens, typography: { ...tokens.typography, fontBody } })} onReset={() => onTokensChange({ ...tokens, typography: { ...tokens.typography, fontBody: defaultDesignTokens.typography.fontBody } })} />
-            <TokenTextField label="Display font stack" value={tokens.typography.fontDisplay} onChange={(fontDisplay) => onTokensChange({ ...tokens, typography: { ...tokens.typography, fontDisplay } })} onReset={() => onTokensChange({ ...tokens, typography: { ...tokens.typography, fontDisplay: defaultDesignTokens.typography.fontDisplay } })} />
+            <div className="token-font-field-row"><FontPicker label="Body font stack" value={tokens.typography.fontBody} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontBody) => updateFontStack('body', fontBody)} onSelectFont={(font) => selectFont('body', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><button type="button" aria-label="Reset Body font stack" onClick={() => updateFontStack('body', defaultDesignTokens.typography.fontBody)}>↺</button></div>
+            <div className="token-font-field-row"><FontPicker label="Display font stack" value={tokens.typography.fontDisplay} customFonts={fontLibrary.catalogEntries} uploadedFonts={fontLibrary.fonts} protectedStacks={protectedFontStacks} isLoadingFonts={fontLibrary.isLoading} isUploadingFont={fontLibrary.isUploading} fontLibraryNotice={fontLibrary.notice} onChange={(fontDisplay) => updateFontStack('display', fontDisplay)} onSelectFont={(font) => selectFont('display', font)} onUploadFont={fontLibrary.addFont} onRemoveFont={(fontId) => fontLibrary.removeFont(fontId, protectedFontStacks)} /><button type="button" aria-label="Reset Display font stack" onClick={() => updateFontStack('display', defaultDesignTokens.typography.fontDisplay)}>↺</button></div>
           </div>
+          {effectiveFontNotice && <p className="token-font-notice" role="status">{effectiveFontNotice}</p>}
           <div className="token-range-grid">
             {([['sizeXs', 'Extra small', 8, 32], ['sizeSm', 'Small', 9, 36], ['sizeMd', 'Base', 10, 40], ['sizeLg', 'Large', 12, 52], ['sizeXl', 'Display', 16, 72]] as const).map(([key, label, min, max]) => <TokenNumberField key={key} label={label} value={tokens.typography[key]} min={min} max={max} onChange={(value) => updateNumber('typography', key, value)} onReset={() => resetNumber('typography', key)} />)}
-            {([['weightNormal', 'Regular weight', 300, 800, 100], ['weightMedium', 'Medium weight', 300, 800, 100], ['weightStrong', 'Strong weight', 300, 900, 100]] as const).map(([key, label, min, max, step]) => <TokenNumberField key={key} label={label} value={tokens.typography[key]} min={min} max={max} step={step} unit="" onChange={(value) => updateNumber('typography', key, value)} onReset={() => resetNumber('typography', key)} />)}
+            {([['weightNormal', 'Regular weight'], ['weightMedium', 'Medium weight'], ['weightStrong', 'Strong weight']] as const).map(([key, label]) => <TokenNumberField key={key} label={label} value={tokens.typography[key]} min={fontWeightDomain.min} max={fontWeightDomain.max} step={1} unit="" disabled={fontWeightDomain.compatible === false || fontWeightDomain.values?.length === 1} onChange={(value) => updateNumber('typography', key, normalizeWeightToDomain(value, fontWeightDomain))} onReset={() => updateNumber('typography', key, normalizeWeightToDomain(defaultDesignTokens.typography[key], fontWeightDomain))} />)}
             <TokenNumberField label="Body line height" value={tokens.typography.lineHeightBody} min={1} max={2.5} step={0.05} unit="" onChange={(value) => updateNumber('typography', 'lineHeightBody', value)} onReset={() => resetNumber('typography', 'lineHeightBody')} />
             <TokenNumberField label="Heading letter spacing" value={tokens.typography.letterSpacingHeading} min={-0.12} max={0.2} step={0.01} unit="em" onChange={(value) => updateNumber('typography', 'letterSpacingHeading', value)} onReset={() => resetNumber('typography', 'letterSpacingHeading')} />
           </div>
@@ -223,9 +278,11 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
       </section>
 
       <section className="token-export-section">
-        <div className="token-export-heading"><div><span className="dashboard-card-label">TAKE YOUR TOKENS WITH YOU</span><h2>Export design tokens</h2></div><button type="button" onClick={copyExport}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div>
+        <div className="token-export-heading"><div><span className="dashboard-card-label">TAKE YOUR TOKENS WITH YOU</span><h2>Export design tokens</h2></div><div className="token-export-actions">{exportFormat === 'css' && <button type="button" onClick={downloadCssExport} disabled={currentFontExport.loading || Boolean(currentFontExport.error)}>Download CSS</button>}<button type="button" onClick={copyExport} disabled={exportFormat === 'css' && (currentFontExport.loading || Boolean(currentFontExport.error))}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div></div>
         <div className="token-export-tabs" role="group" aria-label="Token export format">{(['css', 'json'] as const).map((format) => <button type="button" aria-pressed={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} key={format} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format.toUpperCase()}</button>)}</div>
-        <pre><code>{generatedExport}</code></pre>
+        {exportFormat === 'css' && currentFontExport.error && <p className="token-export-error" role="alert">CSS export is unavailable: {currentFontExport.error}</p>}
+        <pre><code>{exportFormat === 'css' && currentFontExport.loading ? 'Preparing selected font assets…' : generatedExport}</code></pre>
+        {exportFormat === 'css' && !currentFontExport.error && !currentFontExport.loading && <p className="token-export-note">Selected local font files are embedded in the CSS. Manrope retains its existing Google Fonts import.</p>}
       </section>
       <footer className="page-footer"><span>INTERFACE LAB <i>·</i> DESIGN TOKEN STUDIO</span><span>DETAILS THAT ADD UP <i>✳</i></span></footer>
     </div>

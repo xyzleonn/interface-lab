@@ -5,6 +5,7 @@ import { VisualComponentEditor } from './features/playground/VisualComponentEdit
 import { TokenStudio } from './features/tokens/TokenStudio'
 import { getAppearancePreviewVariables } from './features/tokens/appearancePreview'
 import { getDesignTokenVariables } from './features/tokens/tokenCss'
+import { useCustomFonts } from './features/tokens/useCustomFonts'
 import { loadDesignTokens, saveDesignTokens } from './features/tokens/tokenStorage'
 import type { DesignTokens } from './features/tokens/tokenTypes'
 import { normalizeColorHex } from './utils/colors'
@@ -476,6 +477,8 @@ function App() {
   const [appliedTokens, setAppliedTokens] = useState<DesignTokens>(loadDesignTokens)
   const [draftTokens, setDraftTokens] = useState<DesignTokens>(() => normalizeDesignTokens(appliedTokens))
   const [draftAccentColor, setDraftAccentColor] = useState(() => getAccentColor(themeSettings))
+  const customFontLibrary = useCustomFonts()
+  const protectedFontStacks = [appliedTokens.typography.fontBody, appliedTokens.typography.fontDisplay, draftTokens.typography.fontBody, draftTokens.typography.fontDisplay]
 
   useEffect(() => {
     const syncPageWithUrl = () => setCurrentPage(getCurrentPage())
@@ -593,7 +596,7 @@ function App() {
       <Sidebar currentPage={currentPage} />
       <main className="main-panel">
         <PageHeader currentPage={currentPage} />
-        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} tokens={appliedTokens} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
+        {currentPage === 'overview' ? <OverviewPage settings={themeSettings} activity={themeActivity} /> : currentPage === 'playground' ? <PlaygroundPage themeAccent={editorAccent} /> : currentPage === 'theme-studio' ? <ThemeStudioPage settings={themeSettings} tokens={appliedTokens} onChange={updateThemeSettings} /> : currentPage === 'token-studio' ? <TokenStudio tokens={draftTokens} mode={themeSettings.mode} accentColor={draftAccentColor} accentVariables={deriveAccent(draftAccentColor)} hasUnappliedChanges={hasTokenDraftChanges} onTokensChange={setDraftTokens} onAccentChange={setDraftAccentColor} onApply={applyTokenDraft} onDiscard={discardTokenDraft} onReset={resetTokenDraft} fontLibrary={customFontLibrary} protectedFontStacks={protectedFontStacks} /> : <SettingsPage settings={themeSettings} tokens={appliedTokens} preferences={preferences} onPreferenceChange={updatePreferences} onReset={resetPreferences} />}
       </main>
     </div>
   )

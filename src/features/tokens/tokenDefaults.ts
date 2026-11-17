@@ -1,5 +1,5 @@
 import type { DesignTokens } from './tokenTypes'
-import { normalizeColorHex } from '../../utils/colors'
+import { normalizeColorHex } from '../../utils/colors.ts'
 
 export const defaultDesignTokens: DesignTokens = {
   colors: {

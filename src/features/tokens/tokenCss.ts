@@ -1,5 +1,5 @@
 import type { DesignTokens } from './tokenTypes'
-import { getReadableTextColor } from './tokenDefaults'
+import { getReadableTextColor } from './tokenDefaults.ts'
 
 function toRgba(hex: string, opacity: number) {
   const channels = hex.slice(1).match(/.{2}/g)?.map((channel) => Number.parseInt(channel, 16)) ?? [228, 226, 245]
@@ -60,9 +60,9 @@ export function getPreviewTokenVariables(tokens: DesignTokens, mode: 'dark' | 'l
   return scopedVariables satisfies Record<`--preview-${string}`, string>
 }
 
-export function designTokensToCss(tokens: DesignTokens, mode: 'dark' | 'light', accentColor: string) {
+export function designTokensToCss(tokens: DesignTokens, mode: 'dark' | 'light', accentColor: string, typographyCss = '') {
   const declarations = Object.entries(getDesignTokenVariables(tokens, mode, accentColor))
     .map(([name, value]) => `  ${name}: ${value};`)
     .join('\n')
-  return `:root {\n${declarations}\n}`
+  return `${typographyCss ? `${typographyCss}\n\n` : ''}:root {\n${declarations}\n}\n\n:where(body) {\n  font-family: var(--font-body);\n  font-synthesis: none;\n  font-weight: var(--font-weight-normal);\n  line-height: var(--line-height-body);\n}\n\n:where(h1, h2, h3, h4, h5, h6) {\n  font-family: var(--font-display);\n}`
 }

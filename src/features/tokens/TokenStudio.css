@@ -17,8 +17,10 @@
 .token-apply-button:not(:disabled):hover { transform: translateY(-1px); border-color: var(--color-accent-hover); background: var(--color-accent-hover); }
 .token-discard-button:disabled,.token-apply-button:disabled { cursor: not-allowed; opacity: .48; }
 .token-discard-button:focus-visible,.token-apply-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-.token-reset-all,.token-save-form button,.token-preset-card button,.token-export-heading > button { min-height: var(--button-height); padding: 0 15px; border: 1px solid var(--color-accent-border); border-radius: var(--radius-sm); background: var(--color-accent-soft); color: var(--color-accent); font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer; transition: transform var(--transition-fast),background var(--transition-fast),border-color var(--transition-fast); }
-.token-reset-all:hover,.token-save-form button:hover,.token-preset-card button:hover,.token-export-heading > button:hover { transform: translateY(-1px); background: var(--color-accent); color: var(--color-accent-contrast); }
+.token-reset-all,.token-save-form button,.token-preset-card button,.token-export-heading > button,.token-export-actions > button { min-height: var(--button-height); padding: 0 15px; border: 1px solid var(--color-accent-border); border-radius: var(--radius-sm); background: var(--color-accent-soft); color: var(--color-accent); font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer; transition: transform var(--transition-fast),background var(--transition-fast),border-color var(--transition-fast); }
+.token-reset-all:hover,.token-save-form button:hover,.token-preset-card button:hover,.token-export-heading > button:hover,.token-export-actions > button:not(:disabled):hover { transform: translateY(-1px); background: var(--color-accent); color: var(--color-accent-contrast); }
+.token-export-actions { display: flex; align-items: center; gap: 8px; }
+.token-export-actions > button:disabled { cursor: not-allowed; opacity: .55; }
 .token-section,.token-presets-section,.token-export-section { border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); background: linear-gradient(145deg,rgb(25 26 34 / 82%),rgb(20 21 28 / 91%)); box-shadow: var(--shadow-card); }
 .token-preview { margin-top: 20px; padding: clamp(20px,1.7vw,30px); border: var(--preview-border-width) solid var(--preview-color-border); border-radius: var(--preview-radius-lg); color: var(--preview-color-text); background: radial-gradient(ellipse at 82% 0,var(--preview-color-accent-soft),transparent 48%),var(--preview-color-canvas); box-shadow: var(--preview-shadow-card); font-family: var(--preview-font-body); font-size: var(--preview-font-size-md); line-height: var(--preview-line-height-body); }
 .token-preview-heading,.token-export-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
@@ -59,7 +61,11 @@
 .token-color-label { overflow: hidden; min-width: 0; color: var(--color-text); font-size: var(--text-label); text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
 .token-color-field > button,.token-text-field > button,.token-number-field > button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-dim); font: inherit; font-size: 17px; cursor: pointer; transition: color var(--transition-fast),background var(--transition-fast); }
 .token-color-field > button:hover,.token-text-field > button:hover,.token-number-field > button:hover { background: var(--color-accent-soft); color: var(--color-accent); }
-.token-font-fields { display: grid; gap: 9px; margin-bottom: 17px; }
+.token-font-fields { display: grid; gap: 11px; margin-bottom: 17px; }
+.token-font-field-row { display: grid; grid-template-columns: minmax(0,1fr) 30px; align-items: end; gap: 7px; min-width: 0; }
+.token-font-field-row > button { display: grid; place-items: center; width: 28px; height: var(--control-height); border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-dim); font: inherit; font-size: 17px; cursor: pointer; transition: color var(--transition-fast),background var(--transition-fast); }
+.token-font-field-row > button:hover,.token-font-field-row > button:focus-visible { background: var(--color-accent-soft); color: var(--color-accent); outline: none; }
+.token-font-notice { margin: -6px 0 13px; color: var(--color-text-muted); font-size: var(--text-meta); line-height: 1.5; }
 .token-text-field { display: grid; grid-template-columns: 140px minmax(0,1fr) 30px; align-items: center; gap: 8px; color: var(--color-text-muted); font-size: var(--text-label); }
 .token-text-field > input { min-width: 0; height: var(--control-height); padding: 0 9px; border: 1px solid var(--color-border); border-radius: 6px; outline: none; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--text-label); }
 .token-text-field > input:focus { border-color: var(--color-accent); }
@@ -104,6 +110,8 @@
 .token-export-tabs button.is-active { border-color: var(--color-border); background: rgb(255 255 255 / 7%); color: var(--color-text); }
 .token-export-section pre { max-height: 430px; margin: 12px 0 0; padding: 17px; overflow: auto; border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm); background: #101117; color: #d2d0dc; tab-size: 2; }
 .token-export-section code { font-family: ui-monospace,SFMono-Regular,Consolas,monospace; font-size: 12px; line-height: 1.7; white-space: pre; }
+.token-export-note,.token-export-error { margin: 9px 0 0; color: var(--color-text-muted); font-size: var(--text-meta); line-height: 1.5; }
+.token-export-error { color: var(--color-error); }
 .token-studio-page .page-footer { padding-top: 25px; }
 :root[data-theme='light'] .token-preview { background: radial-gradient(ellipse at 82% 0,var(--preview-color-accent-soft),transparent 48%),var(--preview-color-canvas); }
 :root[data-theme='light'] .token-section,:root[data-theme='light'] .token-presets-section,:root[data-theme='light'] .token-export-section { background: linear-gradient(145deg,#fff,#f8f8fc); }
@@ -128,5 +136,6 @@
   .token-save-form { grid-template-columns: 1fr; }
   .token-save-form button { width: 100%; }
   .token-export-heading { align-items: flex-start; }
+  .token-export-actions { flex-wrap: wrap; justify-content: flex-end; }
   .token-export-section code { font-size: 10px; }
 }
