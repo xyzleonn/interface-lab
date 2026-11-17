@@ -97,11 +97,13 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   const [exportFormat, setExportFormat] = useState<'tsx' | 'css' | 'html'>('tsx')
   const [notice, setNotice] = useState('')
   const [copyNotice, setCopyNotice] = useState('')
+  const [copyNoticeKind, setCopyNoticeKind] = useState<'success' | 'error' | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [alertDismissed, setAlertDismissed] = useState(false)
   const modalDialogRef = useRef<HTMLDivElement>(null)
   const modalTriggerRef = useRef<HTMLButtonElement>(null)
   const wasModalOpenRef = useRef(false)
+  const copyNoticeTimeoutRef = useRef<number | null>(null)
   const tabsId = useId()
 
   const generatedCode = exportFormat === 'tsx'
@@ -128,6 +130,28 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     else if (wasModalOpenRef.current) modalTriggerRef.current?.focus()
     wasModalOpenRef.current = modalOpen
   }, [modalOpen])
+
+  useEffect(() => () => {
+    if (copyNoticeTimeoutRef.current !== null) window.clearTimeout(copyNoticeTimeoutRef.current)
+  }, [])
+
+  function clearCopyNotice() {
+    if (copyNoticeTimeoutRef.current !== null) window.clearTimeout(copyNoticeTimeoutRef.current)
+    copyNoticeTimeoutRef.current = null
+    setCopyNotice('')
+    setCopyNoticeKind('')
+  }
+
+  function showCopyNotice(message: string, kind: 'success' | 'error', duration: number) {
+    if (copyNoticeTimeoutRef.current !== null) window.clearTimeout(copyNoticeTimeoutRef.current)
+    setCopyNotice(message)
+    setCopyNoticeKind(kind)
+    copyNoticeTimeoutRef.current = window.setTimeout(() => {
+      setCopyNotice('')
+      setCopyNoticeKind('')
+      copyNoticeTimeoutRef.current = null
+    }, duration)
+  }
 
   function update<K extends ComponentKind>(component: K, updates: Partial<EditorSettings[K]>) {
     if (component === 'alert') setAlertDismissed(false)
@@ -192,11 +216,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   async function copyGeneratedCode() {
     try {
       await navigator.clipboard.writeText(generatedCode)
-      setCopyNotice('Copied to clipboard')
-      window.setTimeout(() => setCopyNotice(''), 1800)
+      showCopyNotice('Copied to clipboard', 'success', 1800)
     } catch {
-      setCopyNotice('Clipboard access is unavailable here')
-      window.setTimeout(() => setCopyNotice(''), 2500)
+      showCopyNotice('Clipboard access is unavailable here', 'error', 2500)
     }
   }
 
@@ -471,7 +493,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
           <div><h1>Shape the <span>details.</span></h1><p>Choose a component, adjust its properties, and see what feels right.</p></div>
           <div className="editor-action-group">
             <button className="editor-action-button save-action" type="button" onClick={() => { setShowPresetForm((open) => !open); setNotice('') }}>＋ Save preset</button>
-            <button className={`editor-action-button export-action${showExport ? ' is-active' : ''}`} type="button" onClick={() => { setShowExport((open) => !open); setCopyNotice('') }}>{showExport ? 'Hide export' : '{ } Export code'}</button>
+            <button className={`editor-action-button export-action${showExport ? ' is-active' : ''}`} type="button" onClick={() => { setShowExport((open) => !open); clearCopyNotice() }}>{showExport ? 'Hide export' : '{ } Export code'}</button>
             <span className="editor-live-badge"><i /> LIVE PREVIEW</span>
           </div>
         </div>
@@ -490,9 +512,9 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
 
       {showExport && (
         <section className="css-export-panel" aria-labelledby="css-export-title">
-          <div className="css-export-heading"><div><span className="dashboard-card-label">COMPONENT EXPORT</span><h2 id="css-export-title">{selectedComponent.label} · {exportFormat === 'tsx' ? 'React / TSX' : exportFormat.toUpperCase()}</h2></div><button type="button" className="copy-css-button" onClick={copyGeneratedCode}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button></div>
+          <div className="css-export-heading"><div><span className="dashboard-card-label">COMPONENT EXPORT</span><h2 id="css-export-title">{selectedComponent.label} · {exportFormat === 'tsx' ? 'React / TSX' : exportFormat.toUpperCase()}</h2></div><div className="copy-export-action"><button type="button" className="copy-css-button" data-copy-state={copyNoticeKind || undefined} onClick={copyGeneratedCode}>{copyNotice || `Copy ${exportFormat.toUpperCase()}`}</button><span className="sr-only" role="status" aria-live="polite">{copyNotice}</span></div></div>
           <div className="export-format-tabs" role="group" aria-label="Export format">
-            {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" aria-pressed={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); setCopyNotice('') }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
+            {(['tsx', 'css', 'html'] as const).map((format) => <button key={format} type="button" aria-pressed={exportFormat === format} className={exportFormat === format ? 'is-active' : ''} onClick={() => { setExportFormat(format); clearCopyNotice() }}>{format === 'tsx' ? 'React / TSX' : format.toUpperCase()}</button>)}
           </div>
           <pre><code>{generatedCode}</code></pre>
           <p>{exportFormat === 'tsx' ? 'The component includes typed props and uses the matching scoped CSS classes from the CSS export.' : exportFormat === 'css' ? 'Scoped styles for this component only. Pair with the generated HTML or React component.' : htmlExportNote}</p>

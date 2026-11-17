@@ -146,6 +146,26 @@ test('Playground preview styles provide distinct semantic state treatments', () 
   assert.match(css, /prefers-reduced-motion:\s*reduce/)
 })
 
+test('export copy feedback is announced, timed safely, and distinguishes failures', () => {
+  const jsx = readFileSync(new URL('../src/features/playground/VisualComponentEditor.tsx', import.meta.url), 'utf8')
+  const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')
+  assert.match(jsx, /role="status" aria-live="polite">\{copyNotice\}/)
+  assert.match(jsx, /copyNoticeTimeoutRef\.current !== null\) window\.clearTimeout/)
+  assert.match(jsx, /showCopyNotice\('Copied to clipboard', 'success', 1800\)/)
+  assert.match(jsx, /showCopyNotice\('Clipboard access is unavailable here', 'error', 2500\)/)
+  assert.match(css, /data-copy-state='success'/)
+  assert.match(css, /data-copy-state='error'/)
+})
+
+test('preview variant changes transition surfaces without implying a card click action', () => {
+  const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')
+  const interactiveCardRule = css.match(/\.editor-card-preview\.is-interactive \{([^}]*)\}/)?.[1] ?? ''
+  assert.doesNotMatch(interactiveCardRule, /cursor:\s*pointer/)
+  assert.match(css, /\.editor-card-preview \{[^}]*background var\(--transition-fast\)/)
+  assert.match(css, /\.editor-input-preview \{[^}]*background var\(--transition-fast\)/)
+  assert.match(css, /\.editor-alert-preview \{[^}]*background var\(--transition-fast\)/)
+})
+
 test('Button loading preview renders a sized, contrasting spinner and disables activation', () => {
   const jsx = readFileSync(new URL('../src/features/playground/VisualComponentEditor.tsx', import.meta.url), 'utf8')
   const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')
