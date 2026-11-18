@@ -1,74 +1,101 @@
-# Interface Lab
+<div align="center">
+  <img src="public/assets/interface-lab-logo.png.png" alt="Interface Lab orbital mark" width="76" />
+  <h1>Interface Lab</h1>
+  <p><strong>A considered space for shaping interfaces.</strong></p>
+  <p>A desktop-first creative workspace for exploring themes, editing design tokens, and prototyping reusable UI components.</p>
+  <p><code>React</code> · <code>TypeScript</code> · <code>Vite</code> · <code>CSS</code></p>
+</div>
 
-Interface Lab is a desktop-first creative workspace for exploring themes, editing design tokens, and prototyping reusable interface components. It is built as a personal UI experimentation tool and an open-source learning project.
+---
 
-## Features
+## In the workspace
 
-- **Overview:** A workspace dashboard with theme shortcuts, current appearance details, and session-only theme activity.
-- **Theme Studio:** Choose dark or light appearance and a preset or custom accent color.
-- **Design Tokens:** Edit color, typography, spacing, shape, shadow, and effect tokens in an isolated draft preview. Apply, discard, reset, save token presets, and export CSS variables or JSON.
-- **Component Playground:** Select and configure 11 components: Button, Card, Input, Toggle, Slider, Badge, Alert, Select, Modal, Tooltip, and Tabs. Available properties include variants, sizes, and appropriate interactive preview states.
-- **Presets and exports:** Save, load, and delete component presets. Export the selected component as HTML, CSS, or React/TypeScript (TSX).
-- **Typography:** Browse built-in fonts and use custom font files in WOFF2, WOFF, TTF, or OTF formats. Built-in Inter and DM Sans assets are self-hosted; Manrope currently uses an external Google Fonts stylesheet.
+Interface Lab brings a theme workbench, a design-token sandbox, and a component playground into one personal workspace. Tune the details, see changes in context, and keep useful experiments as presets. It is built for hands-on interface exploration and as an open-source frontend learning project.
 
-## Screenshots
+## A look inside
 
-Screenshots are not included yet. Add reviewed application screenshots here when they are available; no placeholder images are shipped with the repository.
+QHD captures of the application in its dark appearance.
 
-## Technology
+<table>
+  <tr>
+    <td width="50%"><strong>Overview</strong><br /><img src="screenshots/overview-qhd.png" alt="Interface Lab Overview dashboard in its dark theme" width="100%" /></td>
+    <td width="50%"><strong>Settings</strong><br /><img src="screenshots/settings-qhd.png" alt="Interface Lab Settings page in its dark theme" width="100%" /></td>
+  </tr>
+</table>
 
-React 19, TypeScript, Vite 8, and plain CSS. The runtime application dependencies are React and React DOM; development tools include Vite, TypeScript, Oxlint, and Playwright Test for browser-level checks.
+## What you can explore
 
-## Prerequisites
+### Theme and tokens
 
-Use Node.js **22.12.0 or later**. This Node 22 LTS baseline satisfies Vite 8 and the built-in TypeScript stripping used by `npm test`. Use the npm version distributed with your Node.js installation; the repository has no separate npm version constraint.
+- **Theme Studio** switches between dark and light appearance and offers preset or custom accent colors.
+- **Design Tokens** provides an isolated live preview for color, typography, spacing, shape, shadow, and effect tokens. Apply or discard drafts, restore defaults, save token presets, and export CSS variables or JSON.
+- **Typography** includes searchable built-in fonts and browser-local custom font uploads. Inter and DM Sans are self-hosted; Manrope currently loads from Google Fonts.
 
-## Install and run
+### Component Playground
+
+Configure and preview eleven components: **Button, Card, Input, Toggle, Slider, Badge, Alert, Select, Modal, Tooltip,** and **Tabs**. The editor exposes relevant variants, sizes, properties, and interactive states for each component. Save, load, and delete component presets, then export the selected configuration as **HTML, CSS, or React/TypeScript (TSX)**. Static HTML output documents interactions that require JavaScript.
+
+## Built with
+
+- React 19 and TypeScript
+- Vite 8
+- Plain CSS and CSS custom properties
+- Node.js test runner and Playwright Test with Chromium
+
+## Get started
+
+### Requirements
+
+- Node.js **22.12.0 or later**
+- npm (the version distributed with Node.js is sufficient)
+
+### Install and run locally
 
 ```sh
+git clone https://github.com/xyzleonn/interface-lab.git
+cd interface-lab
 npm ci
 npm run dev
 ```
 
-Vite prints the local development URL in the terminal. The app runs in the browser and does not require application secrets or a backend service.
+Open the local address printed by Vite. No backend service, account, or application secrets are required.
 
-## Development commands
+## Use the workspace
+
+Use the sidebar to move between **Overview**, **Theme Studio**, **Design Tokens**, **Playground**, and **Settings**. In the Playground, choose a component, adjust its properties in the inspector, and copy or export the generated code. In Design Tokens, edit values in the draft preview and choose **Apply to Workspace** when you want those values to become the application-wide tokens.
+
+## Development and checks
 
 ```sh
-npm test          # Run the Node.js test suite
-npm run lint      # Run Oxlint
-npm run build     # Run TypeScript project checks and create dist/
-npm run preview   # Serve the production build locally
+npm test          # Node.js unit and regression tests
+npm run lint      # Oxlint
+npm run build     # TypeScript checks and production build in dist/
+npm run preview   # Preview the production build locally
 ```
 
-## Browser tests
-
-Browser tests use Playwright Test and Chromium. Install the project dependencies and the matching Playwright browser once:
+Browser tests run separately with Playwright Test. Install Chromium once, then run:
 
 ```sh
-npm ci
 npx playwright install chromium
 npm run test:e2e
 ```
 
-The Playwright config starts a dedicated Vite server on `127.0.0.1:4173`. Tests run separately from `npm test` and cover workspace navigation, component previews, dropdown and modal interactions, and keyboard focus behavior. Screenshots and traces are retained for failures in `test-results/`. In environments that provide a system Chromium but cannot download Playwright's browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to that executable path when running `npm run test:e2e`.
+The Playwright configuration starts a dedicated Vite server on `127.0.0.1:4173`. Failure screenshots and traces are written to `test-results/`.
 
-## Local data and custom fonts
+## Local data and current limits
 
-Theme choices, application preferences, design tokens and their presets, and component presets are stored in browser `localStorage`. Uploaded custom font binaries are stored in browser IndexedDB and loaded with the browser Font Loading API. Font files are not sent to an application server. Clearing site data removes these settings, presets, and uploaded fonts. Manrope requires a network connection unless a fallback font is used.
+Theme choices, preferences, design tokens and token presets, and component presets are stored in the browser's `localStorage`. Custom font files are kept in IndexedDB and loaded locally; they are not uploaded to a server. Clearing site data removes this browser's saved settings, presets, and uploaded fonts. Manrope needs a network connection; self-hosted font assets remain available offline.
 
-## Current limitations
+Interface Lab is a local, single-user workspace: it has no account system, cloud sync, or collaboration service. Component and token exports are for export only; the application does not import those files or sync work between browsers. Custom fonts are available only in the browser profile where they were added.
 
-- The workspace is local to one browser profile. There is no account system, cloud sync, or multi-user collaboration.
-- Component HTML/CSS/TSX and token CSS/JSON are export formats only; Interface Lab does not import generated files or synchronize data between browsers.
-- Uploaded fonts are available only in the browser profile where they were added. Back up important font files separately before clearing site data.
-- Manrope is loaded from Google Fonts; other verified built-in font assets are self-hosted.
-- The component library is a prototyping tool. Static HTML exports include notes where JavaScript is required for interaction.
+## Project status
+
+Interface Lab is an early-stage project at **0.1.0**, available under the MIT License. Features and interfaces may continue to evolve as the project develops.
 
 ## Contributing
 
-Contributions are welcome. Start by reviewing [AGENTS.md](AGENTS.md), keep changes focused, and run `npm test`, `npm run lint`, `npm run build`, and `npm run test:e2e` before opening a pull request. Explain user-visible changes and include screenshots for visual changes when available. Recent project commits use Conventional Commit-style subjects, for example `feat(playground): improve component presets`.
+Contributions are welcome. Read [AGENTS.md](AGENTS.md) for project structure and development conventions. Keep changes focused and include the relevant test, lint, and build results in pull requests. For visual changes, include before-and-after screenshots when available.
 
 ## License
 
-Interface Lab is distributed under the MIT License. See [LICENSE](LICENSE) for the copyright notice and complete license text.
+Interface Lab is licensed under the [MIT License](LICENSE). Third-party font assets retain their own license notices in the repository.
