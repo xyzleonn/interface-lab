@@ -240,13 +240,10 @@ function getCardCss(card: EditorSettings['card']) {
 .il-export-card h3 { margin: 14px 0 0; font-size: 19px; font-weight: 530; letter-spacing: -.035em; }
 .il-export-card p { max-width: 270px; margin: 8px 0 0; color: var(--color-text-muted, #92929f); font-size: 11px; line-height: 1.7; }
 .il-export-card__eyebrow { color: var(--color-accent, #a997f5); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
-.il-export-card__link { display: inline-flex; gap: 7px; margin-top: 18px; color: var(--color-accent, #a997f5); font-size: 10px; }
-.il-export-card:hover { transform: translateY(-2px);}
 .il-export-card--default { background: var(--color-surface-raised, #1d1e28); }
 .il-export-card--elevated { background: linear-gradient(145deg,var(--color-surface-raised, #1d1e28),var(--color-surface, #171820)); }
 .il-export-card--outlined { background: transparent; box-shadow: none; }
-.il-export-card--interactive { cursor: pointer; }
-.il-export-card--interactive:hover { border-color: var(--color-accent-border); box-shadow: 0 18px 50px var(--color-accent-glow); }
+.il-export-card--interactive:hover { border-color: var(--color-accent-border); box-shadow: 0 18px 50px var(--color-accent-glow); transform: translateY(-2px); }
 .il-export-card--small h3 { font-size: 16px; }
 .il-export-card--small p { font-size: 12px; }
 .il-export-card--large h3 { font-size: 23px; }
@@ -354,7 +351,7 @@ export function generateComponentHtml(component: ComponentKind, settings: Editor
       return `<!-- Add a click handler in JavaScript if this action should perform work. -->\n<button class="il-export-button il-export-button--${button.variant}" type="button" data-preview-state="${button.previewState}"${disabled ? ' disabled' : ''}${loading ? ' aria-busy="true"' : ''} style="${escapeHtml(serializeStyle(getButtonStyle(button)))}">${loading ? '<span class="il-export-button__spinner" aria-hidden="true"></span>' : ''}${escapeHtml(button.text || 'Button')}</button>`
     }
     case 'card':
-      return `<article class="il-export-card il-export-card--${settings.card.variant} il-export-card--${settings.card.size}" aria-labelledby="il-export-card-title" style="${escapeHtml(serializeStyle(getCardStyle(settings.card)))}">\n  <span class="il-export-card__eyebrow">A SMALL MOMENT</span>\n  <h3 id="il-export-card-title">Room for a good idea.</h3>\n  <p>A simple card can make a little space for something worth noticing.</p>\n  <a class="il-export-card__link" href="#">Take a look <span aria-hidden="true">↗</span></a>\n</article>`
+      return `<article class="il-export-card il-export-card--${settings.card.variant} il-export-card--${settings.card.size}" aria-labelledby="il-export-card-title" style="${escapeHtml(serializeStyle(getCardStyle(settings.card)))}">\n  <span class="il-export-card__eyebrow">A SMALL MOMENT</span>\n  <h3 id="il-export-card-title">Room for a good idea.</h3>\n  <p>A simple card can make a little space for something worth noticing.</p>\n</article>`
     case 'input':
       return `<label class="il-export-field">\n  <span class="il-export-sr-only">${escapeHtml(settings.input.placeholder || 'Text input')}</span>\n  <input class="il-export-input il-export-input--${settings.input.variant}" type="text" data-preview-state="${settings.input.previewState}" aria-invalid="${settings.input.previewState === 'error'}" placeholder="${escapeHtml(settings.input.placeholder)}"${settings.input.disabled ? ' disabled' : ''} style="${escapeHtml(serializeStyle(getInputStyle(settings.input)))}" />\n</label>`
     case 'toggle':

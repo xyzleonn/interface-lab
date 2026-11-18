@@ -166,6 +166,33 @@ test('preview variant changes transition surfaces without implying a card click 
   assert.match(css, /\.editor-alert-preview \{[^}]*background var\(--transition-fast\)/)
 })
 
+test('Card interactive variant is visual-only and consistent across preview and exports', () => {
+  const settings = createSettings()
+  settings.card = { ...settings.card, variant: 'interactive' }
+  const previewSource = readFileSync(new URL('../src/features/playground/VisualComponentEditor.tsx', import.meta.url), 'utf8')
+  const previewCard = previewSource.match(/if \(selected === 'card'\)([\s\S]*?)if \(selected === 'input'\)/)?.[1] ?? ''
+  const html = generateComponentHtml('card', settings)
+  const css = generateComponentCss('card', settings)
+  const tsx = generateComponentTsx('card', settings)
+
+  assert.match(previewCard, /<article className=\{`editor-card-preview il-card is-\$\{card\.variant\}/)
+  assert.doesNotMatch(previewCard, /editor-card-link|href=|<a\b|<button\b|onClick=/)
+  assert.match(html, /<article class="il-export-card il-export-card--interactive/)
+  assert.doesNotMatch(html, /href\s*=|il-export-card__link|Take a look/)
+  assert.match(tsx, /<article className=\{`il-export-card il-export-card--\$\{variant\}/)
+  assert.doesNotMatch(tsx, /href\s*=|il-export-card__link|onClick/)
+  assert.doesNotMatch(css, /cursor\s*:\s*pointer/)
+  assert.doesNotMatch(css, /\.il-export-card:hover/)
+  assert.match(css, /\.il-export-card--interactive:hover \{[^}]*border-color:[^}]*box-shadow:[^}]*transform:\s*translateY\(-2px\)/)
+
+  for (const variant of ['default', 'elevated', 'outlined', 'interactive']) {
+    settings.card = { ...settings.card, variant }
+    assert.match(generateComponentHtml('card', settings), new RegExp(`il-export-card--${variant}`))
+    assert.match(generateComponentCss('card', settings), new RegExp(`il-export-card--${variant}`))
+    assert.match(generateComponentTsx('card', settings), new RegExp(`variant = "${variant}"`))
+  }
+})
+
 test('Button loading preview renders a sized, contrasting spinner and disables activation', () => {
   const jsx = readFileSync(new URL('../src/features/playground/VisualComponentEditor.tsx', import.meta.url), 'utf8')
   const css = readFileSync(new URL('../src/features/playground/VisualComponentEditor.css', import.meta.url), 'utf8')

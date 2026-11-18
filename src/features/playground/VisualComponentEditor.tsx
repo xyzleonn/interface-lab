@@ -259,7 +259,6 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
           <span className="editor-card-eyebrow">A SMALL MOMENT</span>
           <h3>Room for a good idea.</h3>
           <p>A simple card can make a little space for something worth noticing.</p>
-          <span className="editor-card-link">Take a look <b>↗</b></span>
         </article>
       )
     }

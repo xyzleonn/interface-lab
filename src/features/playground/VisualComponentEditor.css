@@ -87,8 +87,6 @@
 .editor-card-eyebrow { color: var(--color-accent); font-size: 7px; font-weight: 700; letter-spacing: .12em; }
 .editor-card-preview h3 { margin: 14px 0 0; color: #e7e5ee; font-size: clamp(15px,2vw,19px); font-weight: 530; letter-spacing: -.035em; }
 .editor-card-preview p { max-width: 270px; margin: 8px 0 0; color: #92929f; font-size: 9px; line-height: 1.7; }
-.editor-card-link { display: inline-flex; gap: 7px; margin-top: 18px; color: var(--color-accent); font-size: 8px; }
-.editor-card-link b { font-weight: 500; }
 .editor-input-preview { width: min(100%,350px); padding: 0 13px; border: 1px solid var(--color-border); outline: none; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 10px; transition: border-color var(--transition-fast),box-shadow var(--transition-fast),height var(--transition-fast),background var(--transition-fast); }
 .editor-input-preview.is-filled { border-color: transparent; background: var(--color-surface-raised); }
 .editor-input-preview.is-outlined { background: transparent; }
@@ -335,7 +333,6 @@
   .preview-context { font-size: var(--type-xs); }
   .editor-card-eyebrow { font-size: 9px; }
   .editor-card-preview p { font-size: var(--type-xs); }
-  .editor-card-link { font-size: var(--type-xs); }
   .editor-input-preview { font-size: var(--type-sm); }
   .editor-slider-preview > span { font-size: var(--type-xs); }
   .editor-slider-preview > small { font-size: var(--type-xs); }

@@ -6,7 +6,7 @@
 - `src/features/playground/` contains the component editor, typed component settings, preset storage, custom selects, exports, and editor styles.
 - `src/features/tokens/` contains Design Token Studio, font catalog and picker, custom font storage, token types, persistence, and CSS/export helpers.
 - `src/components/ui/` holds shared controls; `src/hooks/` and `src/utils/` hold reusable behavior and pure helpers.
-- `src/index.css` defines global styles and semantic CSS variables. `public/` contains static assets and self-hosted font files. `tests/` contains Node.js tests.
+- `src/index.css` defines global styles and semantic CSS variables. `public/` contains static assets and self-hosted font files. `tests/` contains Node.js tests; `tests/e2e/` contains Playwright browser tests. `playwright.config.ts` configures Chromium and starts a dedicated Vite server on port 4173 for E2E runs.
 
 ## Architecture and State
 
@@ -20,11 +20,12 @@ Use plain CSS and the existing semantic variables for color, typography, spacing
 
 ## Commands and Testing
 
-Use Node.js 20.19.x or later in the 20.x line, or 22.12+ (`^20.19.0 || >=22.12.0`, per Vite 8). The project declares no independent npm version constraint. Run commands from the repository root:
+Use Node.js 22.12.0 or later. This satisfies Vite 8 and the TypeScript stripping flag used by the Node test runner. The project declares no independent npm version constraint. Run commands from the repository root:
 
 - `npm ci` installs the lockfile dependencies.
 - `npm run dev` starts Vite.
 - `npm test` runs `tests/*.test.mjs` with Node's built-in test runner and TypeScript stripping.
+- `npm run test:e2e` runs Playwright browser tests in Chromium. Install its browser with `npx playwright install chromium`; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` only when using an available system Chromium instead.
 - `npm run lint` runs Oxlint.
 - `npm run build` runs TypeScript project checks, then creates `dist/` with Vite.
 - `npm run preview` serves the production build locally.

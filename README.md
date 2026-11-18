@@ -17,11 +17,11 @@ Screenshots are not included yet. Add reviewed application screenshots here when
 
 ## Technology
 
-React 19, TypeScript, Vite 8, and plain CSS. The runtime application dependencies are React and React DOM; the development tools include Vite, TypeScript, and Oxlint.
+React 19, TypeScript, Vite 8, and plain CSS. The runtime application dependencies are React and React DOM; development tools include Vite, TypeScript, Oxlint, and Playwright Test for browser-level checks.
 
 ## Prerequisites
 
-Use Node.js **20.19.x or later in the 20.x line, or 22.12+** (Vite 8 engine range: `^20.19.0 || >=22.12.0`). Use the npm version distributed with your Node.js installation; the repository has no separate npm version constraint.
+Use Node.js **22.12.0 or later**. This Node 22 LTS baseline satisfies Vite 8 and the built-in TypeScript stripping used by `npm test`. Use the npm version distributed with your Node.js installation; the repository has no separate npm version constraint.
 
 ## Install and run
 
@@ -40,6 +40,18 @@ npm run lint      # Run Oxlint
 npm run build     # Run TypeScript project checks and create dist/
 npm run preview   # Serve the production build locally
 ```
+
+## Browser tests
+
+Browser tests use Playwright Test and Chromium. Install the project dependencies and the matching Playwright browser once:
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+The Playwright config starts a dedicated Vite server on `127.0.0.1:4173`. Tests run separately from `npm test`; screenshots and traces are retained for failures in `test-results/`. In environments that provide a system Chromium but cannot download Playwright's browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to that executable path when running `npm run test:e2e`.
 
 ## Local data and custom fonts
 
