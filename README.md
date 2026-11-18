@@ -51,7 +51,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The Playwright config starts a dedicated Vite server on `127.0.0.1:4173`. Tests run separately from `npm test`; screenshots and traces are retained for failures in `test-results/`. In environments that provide a system Chromium but cannot download Playwright's browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to that executable path when running `npm run test:e2e`.
+The Playwright config starts a dedicated Vite server on `127.0.0.1:4173`. Tests run separately from `npm test` and cover workspace navigation, component previews, dropdown and modal interactions, and keyboard focus behavior. Screenshots and traces are retained for failures in `test-results/`. In environments that provide a system Chromium but cannot download Playwright's browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to that executable path when running `npm run test:e2e`.
 
 ## Local data and custom fonts
 

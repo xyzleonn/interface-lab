@@ -32,6 +32,8 @@ Use Node.js 22.12.0 or later. This satisfies Vite 8 and the TypeScript stripping
 
 Add focused regression tests for pure logic and export/persistence helpers. A successful build does not replace browser checks for UI behavior.
 
+For Playwright tests, prefer accessible roles and exact names, keep scenarios in focused specs under `tests/e2e/`, and rely on Playwright's locator waiting instead of fixed sleeps. Keep tests independent and avoid asserting CSS implementation details unless testing a user-visible focus indicator.
+
 ## Commits and Pull Requests
 
 Recent commits use Conventional Commit-style subjects such as `feat(playground): ...`. Keep commits scoped. Pull requests should explain the user-visible change, list test/lint/build results, link an issue when applicable, and include screenshots for visual changes when available.
