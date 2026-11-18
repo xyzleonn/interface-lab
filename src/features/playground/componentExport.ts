@@ -326,20 +326,28 @@ function getSliderCss(slider: EditorSettings['slider']) {
 @media (prefers-reduced-motion: reduce) { .il-export-slider input { scroll-behavior: auto; } }`
 }
 
-export function generateComponentCss(component: ComponentKind, settings: EditorSettings) {
+const exportRootClasses: Record<ComponentKind, string> = {
+  button: 'il-export-button', card: 'il-export-card', input: 'il-export-input', toggle: 'il-export-toggle',
+  slider: 'il-export-slider', badge: 'il-export-badge', alert: 'il-export-alert', select: 'il-export-select',
+  modal: 'il-export-modal', tooltip: 'il-export-tooltip', tabs: 'il-export-tabs',
+}
+
+export function generateComponentCss(component: ComponentKind, settings: EditorSettings, accentColor = '#a997f5') {
+  let componentCss: string
   switch (component) {
-    case 'button': return `/* Button text: "${safeComment(settings.button.text)}" */\n${getButtonCss(settings.button)}`
-    case 'card': return getCardCss(settings.card)
-    case 'input': return `/* Placeholder: "${safeComment(settings.input.placeholder)}" */\n${getInputCss(settings.input)}`
-    case 'toggle': return `/* Initial state: ${settings.toggle.defaultOn ? 'on' : 'off'} */\n${getToggleCss(settings.toggle)}`
-    case 'slider': return `/* Range: min ${safeNumber(settings.slider.min, 0)}, max ${safeNumber(settings.slider.max, 100)}, initial ${safeNumber(settings.slider.value, 0)} */\n${getSliderCss(settings.slider)}`
-    case 'badge': return getBadgeCss()
-    case 'alert': return getAlertCss()
-    case 'select': return getSelectCss()
-    case 'modal': return getModalCss()
-    case 'tooltip': return getTooltipCss()
-    case 'tabs': return getTabsCss()
+    case 'button': componentCss = `/* Button text: "${safeComment(settings.button.text)}" */\n${getButtonCss(settings.button)}`; break
+    case 'card': componentCss = getCardCss(settings.card); break
+    case 'input': componentCss = `/* Placeholder: "${safeComment(settings.input.placeholder)}" */\n${getInputCss(settings.input)}`; break
+    case 'toggle': componentCss = `/* Initial state: ${settings.toggle.defaultOn ? 'on' : 'off'} */\n${getToggleCss(settings.toggle)}`; break
+    case 'slider': componentCss = `/* Range: min ${safeNumber(settings.slider.min, 0)}, max ${safeNumber(settings.slider.max, 100)}, initial ${safeNumber(settings.slider.value, 0)} */\n${getSliderCss(settings.slider)}`; break
+    case 'badge': componentCss = getBadgeCss(); break
+    case 'alert': componentCss = getAlertCss(); break
+    case 'select': componentCss = getSelectCss(); break
+    case 'modal': componentCss = getModalCss(); break
+    case 'tooltip': componentCss = getTooltipCss(); break
+    case 'tabs': componentCss = getTabsCss(); break
   }
+  return `.${exportRootClasses[component]} {\n  --color-accent: ${safeColor(accentColor, '#a997f5')};\n}\n\n${componentCss}`
 }
 
 export function generateComponentHtml(component: ComponentKind, settings: EditorSettings) {

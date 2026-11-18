@@ -57,10 +57,18 @@ The Playwright config starts a dedicated Vite server on `127.0.0.1:4173`. Tests 
 
 Theme choices, application preferences, design tokens and their presets, and component presets are stored in browser `localStorage`. Uploaded custom font binaries are stored in browser IndexedDB and loaded with the browser Font Loading API. Font files are not sent to an application server. Clearing site data removes these settings, presets, and uploaded fonts. Manrope requires a network connection unless a fallback font is used.
 
+## Current limitations
+
+- The workspace is local to one browser profile. There is no account system, cloud sync, or multi-user collaboration.
+- Component HTML/CSS/TSX and token CSS/JSON are export formats only; Interface Lab does not import generated files or synchronize data between browsers.
+- Uploaded fonts are available only in the browser profile where they were added. Back up important font files separately before clearing site data.
+- Manrope is loaded from Google Fonts; other verified built-in font assets are self-hosted.
+- The component library is a prototyping tool. Static HTML exports include notes where JavaScript is required for interaction.
+
 ## Contributing
 
-Contributions are welcome. Start by reviewing [AGENTS.md](AGENTS.md), keep changes focused, and run tests, lint, and build before opening a pull request. Explain user-visible changes and include screenshots for visual changes when available. Recent project commits use Conventional Commit-style subjects, for example `feat(playground): improve component presets`.
+Contributions are welcome. Start by reviewing [AGENTS.md](AGENTS.md), keep changes focused, and run `npm test`, `npm run lint`, `npm run build`, and `npm run test:e2e` before opening a pull request. Explain user-visible changes and include screenshots for visual changes when available. Recent project commits use Conventional Commit-style subjects, for example `feat(playground): improve component presets`.
 
 ## License
 
-The project is intended to be distributed under the MIT License. See `LICENSE` for the copyright notice and complete license text.
+Interface Lab is distributed under the MIT License. See [LICENSE](LICENSE) for the copyright notice and complete license text.

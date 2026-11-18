@@ -1,7 +1,13 @@
 {
   "name": "interface-lab",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "A desktop-first creative workspace for exploring themes, editing design tokens, and prototyping reusable interface components.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xyzleonn/interface-lab.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

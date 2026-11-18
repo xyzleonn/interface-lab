@@ -4,7 +4,7 @@ import { ColorPickerField } from '../../components/ui/ColorPickerField'
 import { RangeSlider } from '../../components/ui/RangeSlider'
 import { CustomSelect } from './CustomSelect'
 import { CustomSelectPreview } from './CustomSelectPreview'
-import { loadPresets, savePresets } from './presetStorage'
+import { getPresetLoadIssueMessage, loadPresetsWithStatus, recoverPresets, savePresets, type PresetLoadIssue } from './presetStorage'
 import { generateComponentCss, generateComponentHtml, generateComponentTsx, getButtonStyle, getCardStyle, getInputStyle, getSafeTabsLabels, getToggleStyle } from './componentExport'
 import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 import './VisualComponentEditor.css'
@@ -90,12 +90,14 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
   const [selected, setSelected] = useState<ComponentKind>('button')
   const [settings, setSettings] = useState<EditorSettings>(() => createInitialSettings(themeAccent))
   const [inputValue, setInputValue] = useState('')
-  const [presets, setPresets] = useState<ComponentPreset[]>(loadPresets)
+  const [initialPresetLoad] = useState(loadPresetsWithStatus)
+  const [presets, setPresets] = useState<ComponentPreset[]>(initialPresetLoad.presets)
+  const [presetLoadIssue, setPresetLoadIssue] = useState<PresetLoadIssue | null>(initialPresetLoad.issue)
   const [showPresetForm, setShowPresetForm] = useState(false)
   const [presetName, setPresetName] = useState('')
   const [showExport, setShowExport] = useState(false)
   const [exportFormat, setExportFormat] = useState<'tsx' | 'css' | 'html'>('tsx')
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(() => getPresetLoadIssueMessage(initialPresetLoad.issue))
   const [copyNotice, setCopyNotice] = useState('')
   const [copyNoticeKind, setCopyNoticeKind] = useState<'success' | 'error' | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -110,7 +112,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     ? generateComponentTsx(selected, settings)
     : exportFormat === 'html'
       ? generateComponentHtml(selected, settings)
-      : generateComponentCss(selected, settings)
+      : generateComponentCss(selected, settings, themeAccent)
   const htmlExportNote = selected === 'button'
     ? 'The button is static markup; add a JavaScript click handler to perform an action.'
     : selected === 'toggle'
@@ -211,6 +213,21 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
     }
     setPresets(nextPresets)
     setNotice(`Deleted “${preset.name}”.`)
+  }
+
+  function recoverSavedPresets() {
+    const action = presetLoadIssue === 'incompatible'
+      ? 'replace this app’s component preset list with the valid presets currently shown and remove incompatible entries'
+      : 'clear this app’s unreadable component preset data'
+    if (!window.confirm(`This will ${action}. Other Interface Lab data will not be changed. Continue?`)) return
+    if (!recoverPresets(presets)) {
+      setNotice('Could not recover component presets in this browser.')
+      return
+    }
+    setPresetLoadIssue(null)
+    setNotice(presetLoadIssue === 'incompatible'
+      ? 'Recovered component presets. Valid presets were kept and incompatible entries were removed.'
+      : 'Unreadable component preset data was cleared. Other saved data was kept.')
   }
 
   async function copyGeneratedCode() {
@@ -507,7 +524,7 @@ export function VisualComponentEditor({ themeAccent }: { themeAccent: string }) 
           <button className="editor-form-cancel" type="button" onClick={() => setShowPresetForm(false)}>Cancel</button>
         </form>
       )}
-      {notice && <p className="editor-notice" role="status">{notice}</p>}
+      {notice && <div className="editor-notice-row"><p className="editor-notice" role={presetLoadIssue ? 'alert' : 'status'}>{notice}</p>{presetLoadIssue && presetLoadIssue !== 'unavailable' && <button className="editor-recovery-button" type="button" onClick={recoverSavedPresets}>{presetLoadIssue === 'incompatible' ? 'Remove incompatible entries' : 'Clear unreadable component presets'}</button>}</div>}
 
       {showExport && (
         <section className="css-export-panel" aria-labelledby="css-export-title">

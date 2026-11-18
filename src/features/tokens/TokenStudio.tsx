@@ -7,7 +7,7 @@ import type { CustomFontLibrary } from './useCustomFonts'
 import { defaultDesignTokens, normalizeDesignTokens, safeFontFamily } from './tokenDefaults'
 import { designTokensToCss, getPreviewTokenVariables } from './tokenCss'
 import { generateTypographyFontCss } from './typographyExport'
-import { loadTokenPresets, saveTokenPresets } from './tokenStorage'
+import { getTokenPresetLoadIssueMessage, loadTokenPresetsWithStatus, recoverTokenPresets, saveTokenPresets, type TokenPresetLoadIssue } from './tokenStorage'
 import type { DesignTokens, TokenPreset } from './tokenTypes'
 import './TokenStudio.css'
 
@@ -62,9 +62,11 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
   fontLibrary: CustomFontLibrary
   protectedFontStacks: string[]
 }) {
-  const [presets, setPresets] = useState<TokenPreset[]>(loadTokenPresets)
+  const [initialPresetLoad] = useState(loadTokenPresetsWithStatus)
+  const [presets, setPresets] = useState<TokenPreset[]>(initialPresetLoad.presets)
+  const [presetLoadIssue, setPresetLoadIssue] = useState<TokenPresetLoadIssue | null>(initialPresetLoad.issue)
   const [presetName, setPresetName] = useState('')
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(() => getTokenPresetLoadIssueMessage(initialPresetLoad.issue))
   const [fontNotice, setFontNotice] = useState('')
   const [exportFormat, setExportFormat] = useState<'css' | 'json'>('css')
   const [copyNotice, setCopyNotice] = useState('')
@@ -179,6 +181,21 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
     setNotice(`Deleted “${preset.name}”.`)
   }
 
+  function recoverSavedPresets() {
+    const action = presetLoadIssue === 'incompatible'
+      ? 'replace this app’s design token preset list with the valid presets currently shown and remove incompatible entries'
+      : 'clear this app’s unreadable design token preset data'
+    if (!window.confirm(`This will ${action}. Applied workspace tokens and component presets will not be changed. Continue?`)) return
+    if (!recoverTokenPresets(presets)) {
+      setNotice('Could not recover design token presets in this browser.')
+      return
+    }
+    setPresetLoadIssue(null)
+    setNotice(presetLoadIssue === 'incompatible'
+      ? 'Recovered design token presets. Valid presets were kept and incompatible entries were removed.'
+      : 'Unreadable design token preset data was cleared. Applied workspace tokens and other saved data were kept.')
+  }
+
   async function copyExport() {
     if (exportFormat === 'css' && (currentFontExport.loading || currentFontExport.error)) {
       setCopyNotice(currentFontExport.error ? 'Font export unavailable' : 'Preparing fonts…')
@@ -286,7 +303,7 @@ export function TokenStudio({ tokens, mode, accentColor, accentVariables, hasUna
       <section className="token-presets-section">
         <div className="token-section-heading"><span>05</span><div><h2>Token presets</h2><p>Named design systems are stored separately from component presets.</p></div></div>
         <form className="token-save-form" onSubmit={savePreset}><label htmlFor="token-preset-name">Save current configuration</label><input id="token-preset-name" value={presetName} maxLength={60} placeholder="e.g. Midnight mint" onChange={(event) => setPresetName(event.target.value)} /><button type="submit">Save preset</button></form>
-        {notice && <p className="token-notice" role="status">{notice}</p>}
+        {notice && <div className="token-notice-row"><p className="token-notice" role={presetLoadIssue ? 'alert' : 'status'}>{notice}</p>{presetLoadIssue && presetLoadIssue !== 'unavailable' && <button className="token-recovery-button" type="button" onClick={recoverSavedPresets}>{presetLoadIssue === 'incompatible' ? 'Remove incompatible entries' : 'Clear unreadable token presets'}</button>}</div>}
         {presets.length > 0 ? <div className="token-presets-grid">{presets.map((preset) => <article className="token-preset-card" key={preset.id}><div><i style={{ background: preset.accentColor }} /><span>{preset.name}</span></div><small>{preset.tokens.typography.fontDisplay.split(',')[0]} · {new Date(preset.savedAt).toLocaleDateString()}</small><div><button type="button" onClick={() => loadPreset(preset)}>Load preset</button><button type="button" aria-label={`Delete ${preset.name}`} onClick={() => deletePreset(preset)}>Delete</button></div></article>)}</div> : <p className="token-presets-empty">Save your current token values to create your first named preset.</p>}
       </section>
 

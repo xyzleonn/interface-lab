@@ -149,3 +149,29 @@ test('keyboard navigation exposes a visible focus indicator and disabled buttons
   const button = page.getByRole('region', { name: 'Button preview' }).getByRole('button', { name: 'Create project' })
   await expect(button).toBeDisabled()
 })
+
+test('component preset storage errors are announced and can be cleared without changing other app data', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('interface-lab-component-presets-v1', '{malformed component presets')
+    localStorage.setItem('interface-lab-theme', JSON.stringify({ mode: 'light', accent: 'ocean', customColor: '#3267d5' }))
+  })
+  await page.goto('/#playground')
+
+  await expect(page.getByRole('alert')).toContainText('could not be parsed')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Clear unreadable component presets' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Unreadable component preset data was cleared' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('interface-lab-component-presets-v1'))).toBe('[]')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('interface-lab-theme'))).toContain('"mode":"light"')
+})
+
+test('oversized token preset data shows its limit and offers scoped recovery', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('interface-lab-design-token-presets-v1', ' '.repeat(1_000_001)))
+  await page.goto('/#token-studio')
+
+  await expect(page.getByRole('alert')).toContainText('exceeds the 1 MB limit')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Clear unreadable token presets' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Unreadable design token preset data was cleared' })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('interface-lab-design-token-presets-v1'))).toBe('[]')
+})

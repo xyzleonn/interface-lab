@@ -1,6 +1,9 @@
 import type { ComponentKind, ComponentPreset, EditorSettings } from './editorTypes'
 
 const presetStorageKey = 'interface-lab-component-presets-v1'
+const maximumPresetStorageLength = 1_000_000
+export type PresetLoadIssue = 'unavailable' | 'malformed' | 'oversized' | 'incompatible'
+export type PresetLoadResult = { presets: ComponentPreset[]; issue: PresetLoadIssue | null }
 const sizeOptions = ['small', 'medium', 'large']
 const buttonVariants = ['primary', 'secondary', 'outline', 'ghost', 'danger']
 const badgeVariants = ['solid', 'soft', 'outline']
@@ -16,6 +19,19 @@ const previewStates = {
   select: ['default', 'hover', 'focus', 'open'],
   tabs: ['default', 'hover', 'focus', 'disabled'],
 } as const
+const presetPropertyKeys: Record<ComponentKind, readonly string[]> = {
+  button: ['variant', 'size', 'radius', 'padding', 'fontSize', 'text', 'previewState'],
+  card: ['variant', 'size', 'radius', 'padding', 'shadow', 'borderVisible'],
+  input: ['placeholder', 'variant', 'radius', 'size', 'disabled', 'previewState'],
+  toggle: ['size', 'accent', 'defaultOn', 'previewState'],
+  slider: ['min', 'max', 'value', 'accent', 'previewState'],
+  badge: ['text', 'variant', 'color', 'size', 'showDot'],
+  alert: ['variant', 'size', 'title', 'description', 'dismissible'],
+  select: ['label', 'placeholder', 'options', 'value', 'disabled', 'previewState'],
+  modal: ['triggerText', 'title', 'description', 'size'],
+  tooltip: ['triggerText', 'content', 'placement'],
+  tabs: ['labels', 'contents', 'activeIndex', 'previewState'],
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -156,6 +172,7 @@ function isPreset(value: unknown): value is ComponentPreset {
   if (!isRecord(value)) return false
   return typeof value.id === 'string'
     && value.id.length > 0
+    && value.id.length <= 120
     && typeof value.name === 'string'
     && value.name.trim().length > 0
     && value.name.length <= 60
@@ -163,17 +180,49 @@ function isPreset(value: unknown): value is ComponentPreset {
     && isProperties(value.component, value.properties)
 }
 
-export function loadPresets(): ComponentPreset[] {
+export function loadPresetsWithStatus(): PresetLoadResult {
+  let stored: string | null
   try {
-    const stored = localStorage.getItem(presetStorageKey)
-    if (!stored) return []
-    const parsed: unknown = JSON.parse(stored)
-    if (!Array.isArray(parsed)) return []
-    const validPresets = parsed.map(migrateLegacyPreset).filter(isPreset)
-    return validPresets.filter((preset, index) => validPresets.findIndex((candidate) => candidate.id === preset.id) === index)
+    stored = localStorage.getItem(presetStorageKey)
   } catch {
-    return []
+    return { presets: [], issue: 'unavailable' }
   }
+  if (stored === null || stored.length === 0) return { presets: [], issue: null }
+  if (stored.length > maximumPresetStorageLength) return { presets: [], issue: 'oversized' }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stored)
+  } catch {
+    return { presets: [], issue: 'malformed' }
+  }
+  if (!Array.isArray(parsed)) return { presets: [], issue: 'malformed' }
+
+  const migrated = parsed.map(migrateLegacyPreset).map(stripUnknownProperties)
+  const candidates = migrated.filter(isPreset)
+  const presets = candidates.filter((preset, index) => candidates.findIndex((candidate) => candidate.id === preset.id) === index)
+  return { presets, issue: presets.length === parsed.length ? null : 'incompatible' }
+}
+
+export function loadPresets(): ComponentPreset[] {
+  return loadPresetsWithStatus().presets
+}
+
+function stripUnknownProperties(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.properties) || typeof value.component !== 'string' || !Object.hasOwn(presetPropertyKeys, value.component)) return value
+  const properties = value.properties
+  const keys = presetPropertyKeys[value.component as ComponentKind]
+  return {
+    ...value,
+    properties: Object.fromEntries(keys.filter((key) => key in properties).map((key) => [key, properties[key]])),
+  }
+}
+
+function storedPresetsAreReadable() {
+  const stored = localStorage.getItem(presetStorageKey)
+  if (stored === null) return true
+  if (stored.length > maximumPresetStorageLength) return false
+  return loadPresetsWithStatus().issue === null
 }
 
 function migrateLegacyPreset(value: unknown): unknown {
@@ -230,9 +279,40 @@ function migrateLegacyPreset(value: unknown): unknown {
 
 export function savePresets(presets: ComponentPreset[]): boolean {
   try {
-    localStorage.setItem(presetStorageKey, JSON.stringify(presets))
+    if (!Array.isArray(presets) || !storedPresetsAreReadable()) return false
+    const safePresets = presets.map(stripUnknownProperties)
+    if (!safePresets.every(isPreset)) return false
+    const ids = safePresets.map((preset) => preset.id)
+    if (new Set(ids).size !== ids.length) return false
+    const serialized = JSON.stringify(safePresets)
+    if (serialized.length > maximumPresetStorageLength) return false
+    localStorage.setItem(presetStorageKey, serialized)
     return true
   } catch {
     return false
   }
+}
+
+export function recoverPresets(presets: ComponentPreset[]): boolean {
+  try {
+    if (!Array.isArray(presets)) return false
+    const safePresets = presets.map(stripUnknownProperties)
+    if (!safePresets.every(isPreset)) return false
+    const ids = safePresets.map((preset) => preset.id)
+    if (new Set(ids).size !== ids.length) return false
+    const serialized = JSON.stringify(safePresets)
+    if (serialized.length > maximumPresetStorageLength) return false
+    localStorage.setItem(presetStorageKey, serialized)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function getPresetLoadIssueMessage(issue: PresetLoadIssue | null) {
+  if (issue === 'unavailable') return 'Saved component presets could not be read in this browser.'
+  if (issue === 'malformed') return 'Saved component preset data could not be parsed. It has been left untouched.'
+  if (issue === 'oversized') return 'Saved component preset data exceeds the 1 MB limit. It has been left untouched.'
+  if (issue === 'incompatible') return 'Some saved component presets are invalid or incompatible. Valid presets remain available; the stored data has not been changed.'
+  return ''
 }

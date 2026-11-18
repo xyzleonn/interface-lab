@@ -4,13 +4,14 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import test, { beforeEach } from 'node:test'
 import { generateComponentCss, generateComponentHtml, generateComponentTsx, getSafeTabsLabels } from '../src/features/playground/componentExport.ts'
-import { loadPresets, savePresets } from '../src/features/playground/presetStorage.ts'
+import { getPresetLoadIssueMessage, loadPresets, loadPresetsWithStatus, recoverPresets, savePresets } from '../src/features/playground/presetStorage.ts'
 import { getAppearancePreviewVariables } from '../src/features/tokens/appearancePreview.ts'
 import { createFontFingerprint, extractFontMetadata, fontStackUsesFamily, hasDuplicateFingerprint, makeCustomCssFamily, validateFontFile, validateFontSignature } from '../src/features/tokens/customFontFiles.ts'
 import { adjustTypographyWeights, findFontByStack, FONT_CATALOG, getFontWeightDomain, nearestSupportedWeight, searchFonts, updateTypographyFont } from '../src/features/tokens/fontCatalog.ts'
 import { loadStoredCustomFonts } from '../src/features/tokens/customFontStorage.ts'
 import { defaultDesignTokens } from '../src/features/tokens/tokenDefaults.ts'
 import { designTokensToCss } from '../src/features/tokens/tokenCss.ts'
+import { getTokenPresetLoadIssueMessage, loadTokenPresets, loadTokenPresetsWithStatus, recoverTokenPresets, saveTokenPresets } from '../src/features/tokens/tokenStorage.ts'
 import { generateTypographyFontCss } from '../src/features/tokens/typographyExport.ts'
 import { getNextOverviewHeadlineIndex, overviewHeadlines } from '../src/features/dashboard/overviewHeadlines.ts'
 
@@ -77,6 +78,176 @@ test('preset round trips preserve Select and Tabs property values exactly', () =
   const restored = loadPresets()
   assert.deepEqual(restored[0].properties, settings.select)
   assert.deepEqual(restored[1].properties, settings.tabs)
+})
+
+test('component presets drop unknown properties and reject invalid writes without replacing stored data', () => {
+  const settings = createSettings()
+  const validPreset = { id: 'known', name: 'Known setup', savedAt: Date.now(), component: 'button', properties: settings.button }
+  const rawPreset = { ...validPreset, properties: { ...settings.button, futureProperty: 'should not reach the editor' } }
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify([rawPreset]))
+  const storedValue = localStorage.getItem('interface-lab-component-presets-v1')
+
+  const [restored] = loadPresets()
+  assert.equal(Object.hasOwn(restored.properties, 'futureProperty'), false)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), storedValue)
+
+  const invalidPreset = { ...validPreset, properties: { ...settings.button, variant: 'unknown' } }
+  assert.equal(savePresets([invalidPreset]), false)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), storedValue)
+})
+
+test('malformed component preset storage is preserved instead of overwritten', () => {
+  const raw = '{malformed'
+  localStorage.setItem('interface-lab-component-presets-v1', raw)
+  const settings = createSettings()
+  const preset = { id: 'valid', name: 'Valid setup', savedAt: Date.now(), component: 'button', properties: settings.button }
+
+  assert.deepEqual(loadPresets(), [])
+  assert.equal(savePresets([preset]), false)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), raw)
+})
+
+test('oversized component preset storage is not parsed or replaced', () => {
+  const raw = ' '.repeat(1_000_001)
+  localStorage.setItem('interface-lab-component-presets-v1', raw)
+  const settings = createSettings()
+  const preset = { id: 'valid', name: 'Valid setup', savedAt: Date.now(), component: 'button', properties: settings.button }
+
+  assert.deepEqual(loadPresets(), [])
+  assert.equal(savePresets([preset]), false)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), raw)
+})
+
+test('component preset writes that exceed the storage limit are rejected', () => {
+  const settings = createSettings()
+  const presets = Array.from({ length: 12_000 }, (_, index) => ({
+    id: `preset-${index}`, name: 'A component preset name of a useful ordinary length', savedAt: Date.now(),
+    component: 'button', properties: settings.button,
+  }))
+
+  assert.equal(savePresets(presets), false)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), null)
+})
+
+test('token presets normalize stored tokens and refuse malformed or duplicate writes safely', () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  tokens.colors.primary = '#2468ac'
+  const preset = { id: 'tokens', name: 'Blue system', savedAt: Date.now(), accentColor: '#2468ac', tokens }
+  assert.equal(saveTokenPresets([preset]), true)
+  assert.deepEqual(loadTokenPresets()[0].tokens, tokens)
+  assert.equal(loadTokenPresets()[0].accentColor, '#2468ac')
+  const storedValue = localStorage.getItem('interface-lab-design-token-presets-v1')
+
+  assert.equal(saveTokenPresets([{ ...preset, accentColor: 'not-a-color' }]), false)
+  assert.equal(saveTokenPresets([preset, preset]), false)
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), storedValue)
+
+  localStorage.setItem('interface-lab-design-token-presets-v1', '{malformed')
+  const malformedValue = localStorage.getItem('interface-lab-design-token-presets-v1')
+  assert.deepEqual(loadTokenPresets(), [])
+  assert.equal(saveTokenPresets([preset]), false)
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), malformedValue)
+})
+
+test('token presets reject incomplete token documents without replacing existing presets', () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  const valid = { id: 'valid', name: 'Valid', savedAt: Date.now(), accentColor: '#a997f5', tokens }
+  assert.equal(saveTokenPresets([valid]), true)
+  const storedValue = localStorage.getItem('interface-lab-design-token-presets-v1')
+  const incomplete = { ...valid, id: 'incomplete', tokens: {} }
+
+  assert.equal(saveTokenPresets([incomplete]), false)
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), storedValue)
+
+  const malformedField = structuredClone(tokens)
+  malformedField.colors.primary = 'not-a-color'
+  assert.equal(saveTokenPresets([{ ...valid, id: 'malformed-field', tokens: malformedField }]), false)
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), storedValue)
+})
+
+test('oversized token preset storage is rejected and preserved', () => {
+  const raw = ' '.repeat(1_000_001)
+  localStorage.setItem('interface-lab-design-token-presets-v1', raw)
+  const tokens = structuredClone(defaultDesignTokens)
+  const preset = { id: 'valid', name: 'Valid', savedAt: Date.now(), accentColor: '#a997f5', tokens }
+
+  assert.deepEqual(loadTokenPresets(), [])
+  assert.equal(saveTokenPresets([preset]), false)
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), raw)
+})
+
+test('preset recovery reports incompatible records and keeps valid entries after explicit repair', () => {
+  const settings = createSettings()
+  const validComponent = { id: 'good-component', name: 'Good component', savedAt: Date.now(), component: 'button', properties: settings.button }
+  const invalidComponent = { ...validComponent, id: 'bad-component', properties: { ...settings.button, variant: 'unknown' } }
+  localStorage.setItem('interface-lab-component-presets-v1', JSON.stringify([validComponent, invalidComponent]))
+  const componentLoad = loadPresetsWithStatus()
+  assert.equal(componentLoad.issue, 'incompatible')
+  assert.equal(componentLoad.presets.length, 1)
+  assert.match(getPresetLoadIssueMessage(componentLoad.issue), /valid presets remain available/i)
+  assert.equal(savePresets(componentLoad.presets), false)
+  assert.equal(recoverPresets(componentLoad.presets), true)
+  assert.deepEqual(loadPresets().map(({ id }) => id), ['good-component'])
+
+  const validTokens = { id: 'good-token', name: 'Good tokens', savedAt: Date.now(), accentColor: '#a997f5', tokens: structuredClone(defaultDesignTokens) }
+  const invalidTokens = { ...validTokens, id: 'bad-token', tokens: {} }
+  localStorage.setItem('interface-lab-design-token-presets-v1', JSON.stringify([validTokens, invalidTokens]))
+  const tokenLoad = loadTokenPresetsWithStatus()
+  assert.equal(tokenLoad.issue, 'incompatible')
+  assert.equal(tokenLoad.presets.length, 1)
+  assert.match(getTokenPresetLoadIssueMessage(tokenLoad.issue), /valid presets remain available/i)
+  assert.equal(saveTokenPresets(tokenLoad.presets), false)
+  assert.equal(recoverTokenPresets(tokenLoad.presets), true)
+  assert.deepEqual(loadTokenPresets().map(({ id }) => id), ['good-token'])
+})
+
+test('malformed preset recovery clears only its own preset key after an explicit recovery call', () => {
+  localStorage.setItem('interface-lab-component-presets-v1', '{broken')
+  localStorage.setItem('interface-lab-design-token-presets-v1', '{also broken')
+  localStorage.setItem('interface-lab-theme', '{keep unrelated data}')
+  assert.equal(loadPresetsWithStatus().issue, 'malformed')
+  assert.equal(loadTokenPresetsWithStatus().issue, 'malformed')
+
+  assert.equal(recoverPresets([]), true)
+  assert.equal(recoverTokenPresets([]), true)
+  assert.equal(localStorage.getItem('interface-lab-component-presets-v1'), '[]')
+  assert.equal(localStorage.getItem('interface-lab-design-token-presets-v1'), '[]')
+  assert.equal(localStorage.getItem('interface-lab-theme'), '{keep unrelated data}')
+})
+
+test('preset storage read and write failures are reported without throwing', () => {
+  const unreadable = { getItem() { throw new Error('private browser storage error') }, setItem() { throw new Error('private browser storage error') } }
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: unreadable })
+  assert.equal(loadPresetsWithStatus().issue, 'unavailable')
+  assert.equal(loadTokenPresetsWithStatus().issue, 'unavailable')
+  assert.equal(savePresets([]), false)
+  assert.equal(saveTokenPresets([]), false)
+
+  const unwritable = { getItem() { return null }, setItem() { throw new Error('quota exceeded') } }
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: unwritable })
+  assert.equal(savePresets([]), false)
+  assert.equal(saveTokenPresets([]), false)
+  assert.equal(recoverPresets([]), false)
+  assert.equal(recoverTokenPresets([]), false)
+})
+
+test('preset load diagnostics give concise user-facing error messages', () => {
+  for (const [issue, phrase] of [['malformed', 'could not be parsed'], ['oversized', '1 MB limit'], ['incompatible', 'invalid or incompatible'], ['unavailable', 'could not be read']]) {
+    assert.match(getPresetLoadIssueMessage(issue), new RegExp(phrase, 'i'))
+    assert.match(getTokenPresetLoadIssueMessage(issue), new RegExp(phrase, 'i'))
+  }
+})
+
+test('older token presets with established groups and omitted new fields remain compatible', () => {
+  const tokens = structuredClone(defaultDesignTokens)
+  delete tokens.shape.buttonHeight
+  localStorage.setItem('interface-lab-design-token-presets-v1', JSON.stringify([
+    { id: 'legacy-token', name: 'Legacy tokens', savedAt: Date.now(), accentColor: '#a997f5', tokens },
+  ]))
+
+  const [preset] = loadTokenPresets()
+  assert.equal(preset.tokens.shape.buttonHeight, defaultDesignTokens.shape.buttonHeight)
+  assert.equal(preset.tokens.colors.dark.background, tokens.colors.dark.background)
 })
 
 test('legacy Badge presets migrate semantic variants and preserve appearance', () => {
@@ -397,6 +568,29 @@ test('component configuration changes update only their own generated output', (
   assert.deepEqual(getSafeTabsLabels(['Overview', '']), ['Overview', 'Tab 2'])
   assert.match(generateComponentHtml('tabs', settings), /Tab 2/)
   assert.match(generateComponentTsx('tabs', settings), /Tab 2/)
+})
+
+test('component exports are deterministic and CSS captures the active workspace accent', () => {
+  const settings = createSettings()
+  const rootClasses = {
+    button: 'il-export-button', card: 'il-export-card', input: 'il-export-input', toggle: 'il-export-toggle',
+    slider: 'il-export-slider', badge: 'il-export-badge', alert: 'il-export-alert', select: 'il-export-select',
+    modal: 'il-export-modal', tooltip: 'il-export-tooltip', tabs: 'il-export-tabs',
+  }
+
+  for (const component of components) {
+    const first = {
+      html: generateComponentHtml(component, settings),
+      css: generateComponentCss(component, settings, '#2468ac'),
+      tsx: generateComponentTsx(component, settings),
+    }
+    assert.deepEqual({
+      html: generateComponentHtml(component, settings),
+      css: generateComponentCss(component, settings, '#2468ac'),
+      tsx: generateComponentTsx(component, settings),
+    }, first, `${component} export should be deterministic`)
+    assert.match(first.css, new RegExp(`\\.${rootClasses[component]} \\{\\n  --color-accent: #2468ac;`))
+  }
 })
 
 test('Theme Studio appearance previews use the applied mode palettes', () => {
